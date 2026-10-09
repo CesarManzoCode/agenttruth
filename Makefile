@@ -53,7 +53,11 @@ gates: node-deps
 
 ## verify-evidence: re-hash every committed evidence directory
 verify-evidence:
-	@set -e; for dir in evidence/K*; do [ -d "$$dir" ] && $(RUN) agenttruth evidence verify $$dir; done
+	@set -e; found=0; \
+	for dir in evidence/K*; do \
+	  if [ -d "$$dir" ]; then found=1; $(RUN) agenttruth evidence verify $$dir; fi; \
+	done; \
+	if [ $$found = 0 ]; then echo "no evidence committed yet"; fi
 
 ## locks: rebuild datasets/*.lock.json (a lock change must be explained in the sprint report)
 locks:
