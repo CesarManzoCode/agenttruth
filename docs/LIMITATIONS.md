@@ -33,3 +33,11 @@ This file states what AgentTruth does not show, cannot show, or has not yet show
 ## Sprint additions
 
 <!-- K1…K7 append here: "### K<n> (YYYY-MM-DD)" followed by L-NN entries. -->
+
+### K1 (2026-10-09)
+
+- **L-18 Ledger ≡ oracle is agreement between two derivations, not agreement with PostHog.** K1 shows that the journey-based construction ledger and the event-based oracle compute the same value for every scenario (K1-C2), on fresh data (`tests/test_ledger_vs_oracle.py`), with faults disabled (K1-C4) and under mutations (K1-C5). Both encode AgentTruth's reading of PostHog semantics; whether PostHog computes the same numbers is first checked in K2 (L1/L2).
+- **L-19 Semantic readings awaiting K2.** Where the contract's rules needed interpretation, the oracle and ledger implement one reading (recorded in `reports/K1.yaml`): a strict funnel counts every event of the person in the date range as "other" (including `$identify` and server-side `paid_bill`); "unique users" over a range counts each person once over the whole range; cumulative retention counts returns in any period from the requested one up to `total_intervals − 1`; events without a person email pass the `not_icontains` test-account filter; `SIG_PERIOD_PREV` shifts a range by its own length (July → 2026-05-31..06-30), not to the previous calendar month. K2 triangulation confirms or corrects each through the divergence registry.
+- **L-20 Planted-cause truths come from purpose-built detectors.** The oracle derives each planted cause from events with five generic detectors whose thresholds suit `ds1` (e.g. an outage needs at least 3 events a day around it). They are not a general anomaly detector, and a different dataset could make them ambiguous (the oracle then refuses to produce a truth rather than guessing).
+- **L-21 Minimal conditional-formatting rule.** The RS case `rs-sql-tablesettings-conditionalformatting` uses a schema-valid rule with an empty `bytecode` list; whether PostHog's UI renders such a rule is not tested, only whether the saved setting survives.
+- **L-22 One round-trip-agent draft asks for a default value.** `ra-retention-week-8-firsttime-cumulative` (id fixed by contract §7.4) asks for 8 retention intervals, which is the `posthog/schema.py` default at the pin (ADR-0022); a loss of that one setting would be invisible. RA prompts are drafts until K4.
