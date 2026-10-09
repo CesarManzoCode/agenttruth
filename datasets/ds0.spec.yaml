@@ -1,0 +1,95 @@
+# Dataset ds0 (contract §5.3): smoke dataset for AT_DEV and unit tests. Same generator as ds1, its
+# own seed, a one-week window, every edge-case kind of §5.2, no planted faults. It has no catalog,
+# so its ledger records journeys only (no scenario values).
+schema: agenttruth.dataset-spec/v1
+dataset_id: ds0
+seed: agenttruth-ds0-v1
+timezone: America/Mexico_City
+week_start_day: 1
+test_account_filters:
+  - {key: email, type: person, value: "@hedgebox-internal.example", operator: not_icontains}
+window: {date_from: 2026-05-04, date_to: 2026-05-10}
+warmup: {date_from: 2026-05-01, date_to: 2026-05-03}
+population:
+  users: 300
+  warmup_users: 40
+  internal_users: 6
+  visitors: 300
+catalog: null
+faults: []
+
+planted:
+  # Sign-ups within ±30 min of local midnight and at exactly 23:59:59.999 / 00:00:00.000.
+  - {label: ms-0505-2340, kind: user, os: Windows, browser: Chrome, signup: {at: "2026-05-05T23:40:00.000", url: /signup/}}
+  - {label: ms-0505-2359, kind: user, os: Mac OS X, browser: Safari, signup: {at: "2026-05-05T23:59:59.999", url: /signup/}}
+  - {label: ms-0506-0000, kind: user, os: Windows, browser: Microsoft Edge, signup: {at: "2026-05-06T00:00:00.000", url: /signup/}}
+  - {label: ms-0506-0020, kind: user, os: iOS, browser: Mobile Safari, signup: {at: "2026-05-06T00:20:00.000", url: /signup/mobile/}}
+  # Uploads and logins at day boundaries, including the window end.
+  - label: night-owl
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-05-04T21:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-05-05T23:59:59.999", event: logged_in}
+      - {at: "2026-05-06T00:00:00.000", event: logged_in}
+      - {at: "2026-05-09T23:59:59.999", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 482113}}
+      - {at: "2026-05-10T00:00:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 1520331}}
+      - {at: "2026-05-10T23:59:59.999", event: uploaded_file, props: {file_type: video/mp4, file_size_b: 88000123}}
+  - label: billing-edge
+    kind: user
+    os: Windows
+    browser: Microsoft Edge
+    signup: {at: "2026-05-04T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-05-05T09:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: business/standard}}
+      - {at: "2026-05-05T09:03:00.000", event: paid_bill, props: {amount_usd_cents: 7500, plan: business/standard}}
+      - {at: "2026-05-09T23:59:59.999", event: paid_bill, props: {amount_usd_cents: 2500, plan: business/standard}}
+  # Funnel completions exactly at the conversion window and ± 1 s.
+  - {label: fw1d-exact, kind: user, os: Windows, browser: Chrome, signup: {at: "2026-05-05T10:00:00.000", url: /signup/},
+     actions: [{at: "2026-05-06T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 120000}}]}
+  - {label: fw1d-minus, kind: user, os: Windows, browser: Chrome, signup: {at: "2026-05-05T10:00:00.000", url: /signup/},
+     actions: [{at: "2026-05-06T09:59:59.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 120001}}]}
+  - {label: fw1d-plus, kind: user, os: Windows, browser: Chrome, signup: {at: "2026-05-05T10:00:00.000", url: /signup/},
+     actions: [{at: "2026-05-06T10:00:01.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 120002}}]}
+  - {label: pw1h-exact, kind: user, os: Windows, browser: Microsoft Edge, pre_visits: [{at: "2026-05-07T14:00:00.000", url: /pricing/}],
+     signup: {at: "2026-05-07T15:00:00.000", url: /signup/}}
+  - {label: pw1h-minus, kind: user, os: Windows, browser: Microsoft Edge, pre_visits: [{at: "2026-05-07T14:00:01.000", url: /pricing/}],
+     signup: {at: "2026-05-07T15:00:00.000", url: /signup/}}
+  - {label: pw1h-plus, kind: user, os: Windows, browser: Microsoft Edge, pre_visits: [{at: "2026-05-07T13:59:59.000", url: /pricing/}],
+     signup: {at: "2026-05-07T15:00:00.000", url: /signup/}}
+  # Out-of-order and interleaved step sequences.
+  - label: ooo-share-first
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-05-08T08:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-05-08T08:10:00.000", event: shared_file_link, props: {file_type: image/jpeg, file_size_b: 330000}}
+      - {at: "2026-05-08T08:11:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 330000}}
+  - label: ooo-interleaved
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-05-08T09:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-05-08T09:05:00.000", event: uploaded_file, props: {file_type: application/zip, file_size_b: 5400000}}
+      - {at: "2026-05-08T09:05:30.000", event: $pageview, url: /files/shared/}
+      - {at: "2026-05-08T09:06:00.000", event: shared_file_link, props: {file_type: application/zip, file_size_b: 5400000}}
+  # First-ever upload before the window (warm-up) versus at the window start.
+  - label: fe-warmup-2359
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-05-02T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-05-03T23:59:59.999", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 250000}}
+      - {at: "2026-05-06T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 250001}}
+  - label: fe-window-0000
+    kind: user
+    os: Mac OS X
+    browser: Chrome
+    signup: {at: "2026-05-02T11:00:00.000", url: /signup/}
+    actions: [{at: "2026-05-04T00:00:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 81000}}]
+
+sensitivity: []

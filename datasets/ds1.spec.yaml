@@ -1,0 +1,403 @@
+# Dataset ds1 (contract §5.2). Every value here is part of the construction: changing it changes the
+# dataset and its lock hashes. Planted journeys put the §5.2 edge cases at exact local times
+# (America/Mexico_City, UTC-06:00); random journeys come from the seeded generator.
+schema: agenttruth.dataset-spec/v1
+dataset_id: ds1
+seed: agenttruth-ds1-v1
+timezone: America/Mexico_City
+week_start_day: 1
+test_account_filters:
+  - {key: email, type: person, value: "@hedgebox-internal.example", operator: not_icontains}
+window: {date_from: 2026-06-01, date_to: 2026-08-31}
+warmup: {date_from: 2026-05-18, date_to: 2026-05-31}
+population:
+  users: 2400
+  warmup_users: 220
+  internal_users: 40
+  visitors: 3000
+catalog: scenarios/catalog.v1.yaml
+
+faults:
+  - {id: F1, cause_type: tracking_outage, event: uploaded_file, date_from: 2026-07-15, date_to: 2026-07-17,
+     property: $os, property_type: event, operator: exact, value: Android}
+  - {id: F2, cause_type: duplicate_events, event: shared_file_link, date_from: 2026-08-03, date_to: 2026-08-09,
+     property: $browser, property_type: event, operator: exact, value: Firefox, duplicate_delay_ms: [50, 400]}
+  - {id: F3, cause_type: identity_break, event: $identify, date_from: 2026-06-22, date_to: 2026-06-28,
+     property: $current_url, property_type: event, operator: icontains, value: /signup/mobile}
+  - {id: F4, cause_type: internal_traffic, event: $pageview, date_from: 2026-07-27, date_to: 2026-07-29,
+     property: email, property_type: person, operator: icontains, value: hedgebox-internal.example, multiplier: 30}
+  - {id: F5, cause_type: property_value_change, event: upgraded_plan, date_from: 2026-08-17, date_to: 2026-08-31,
+     property: new_plan, property_type: event, operator: exact, value: pro, replaces: personal/pro}
+
+planted:
+  # --- Sign-ups within ±30 min of local midnight and at exactly 23:59:59.999 / 00:00:00.000 ------------
+  - {label: ms-0713-2340, kind: user, os: Windows, browser: Chrome, signup: {at: "2026-07-13T23:40:00.000", url: /signup/}}
+  - {label: ms-0713-2359, kind: user, os: Mac OS X, browser: Safari, signup: {at: "2026-07-13T23:59:59.999", url: /signup/}}
+  - {label: ms-0714-0000, kind: user, os: Windows, browser: Microsoft Edge, signup: {at: "2026-07-14T00:00:00.000", url: /signup/}}
+  - {label: ms-0714-0025, kind: user, os: iOS, browser: Mobile Safari, signup: {at: "2026-07-14T00:25:00.000", url: /signup/mobile/}}
+  - {label: ms-0714-2345, kind: user, os: Linux, browser: Firefox, signup: {at: "2026-07-14T23:45:00.000", url: /signup/}}
+  - {label: ms-0714-2359, kind: user, os: Windows, browser: Chrome, signup: {at: "2026-07-14T23:59:59.999", url: /signup/}}
+  - {label: ms-0715-0000, kind: user, os: Mac OS X, browser: Chrome, signup: {at: "2026-07-15T00:00:00.000", url: /signup/}}
+  - {label: ms-0715-0010, kind: user, os: Android, browser: Chrome, signup: {at: "2026-07-15T00:10:00.000", url: /signup/mobile/}}
+  - {label: signup-0714-noon, kind: user, os: Windows, browser: Chrome, signup: {at: "2026-07-14T12:00:00.000", url: /signup/}}
+
+  # --- Uploads, logins and bills at month boundaries -------------------------------------------------
+  - label: night-owl
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-06-10T21:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-06-30T23:59:59.999", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 482113}}
+      - {at: "2026-07-01T00:00:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 1520331}}
+      - {at: "2026-07-01T23:59:59.999", event: logged_in}
+      - {at: "2026-07-02T00:00:00.000", event: logged_in}
+      - {at: "2026-07-31T23:45:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 90412}}
+      - {at: "2026-07-31T23:59:59.999", event: uploaded_file, props: {file_type: video/mp4, file_size_b: 88000123}}
+      - {at: "2026-08-01T00:00:00.000", event: uploaded_file, props: {file_type: video/mp4, file_size_b: 91000456}}
+      - {at: "2026-08-01T00:15:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 2011452}}
+      - {at: "2026-08-31T23:59:59.999", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 301744}}
+  - label: billing-edge-a
+    kind: user
+    os: Windows
+    browser: Microsoft Edge
+    signup: {at: "2026-06-20T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-06-30T23:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: business/standard}}
+      - {at: "2026-06-30T23:05:00.000", event: paid_bill, props: {amount_usd_cents: 10000, plan: business/standard}}
+      - {at: "2026-07-31T23:59:59.999", event: paid_bill, props: {amount_usd_cents: 10000, plan: business/standard}}
+      - {at: "2026-08-31T23:59:59.999", event: paid_bill, props: {amount_usd_cents: 10000, plan: business/standard}}
+  - label: billing-edge-b
+    kind: user
+    os: Mac OS X
+    browser: Chrome
+    signup: {at: "2026-06-25T09:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-01T08:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: personal/pro}}
+      - {at: "2026-07-01T08:03:00.000", event: paid_bill, props: {amount_usd_cents: 1200, plan: personal/pro}}
+      - {at: "2026-08-01T00:00:00.000", event: paid_bill, props: {amount_usd_cents: 1200, plan: personal/pro}}
+
+  # --- Funnel completions exactly at the conversion window and ± 1 s -------------------------------------
+  - label: fw1d-exact
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-03T10:00:00.000", url: /signup/}
+    actions: [{at: "2026-06-04T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 120000}}]
+  - label: fw1d-minus
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-03T10:00:00.000", url: /signup/}
+    actions: [{at: "2026-06-04T09:59:59.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 120001}}]
+  - label: fw1d-plus
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-03T10:00:00.000", url: /signup/}
+    actions: [{at: "2026-06-04T10:00:01.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 120002}}]
+  - label: fw14d-exact
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-06-05T11:00:00.000", url: /signup/}
+    actions: [{at: "2026-06-19T11:00:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 64000}}]
+  - label: fw14d-minus
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-06-05T11:00:00.000", url: /signup/}
+    actions: [{at: "2026-06-19T10:59:59.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 64001}}]
+  - label: fw14d-plus
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-06-05T11:00:00.000", url: /signup/}
+    actions: [{at: "2026-06-19T11:00:01.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 64002}}]
+  - label: pw1h-exact
+    kind: user
+    os: Windows
+    browser: Microsoft Edge
+    pre_visits: [{at: "2026-06-10T14:00:00.000", url: /pricing/}]
+    signup: {at: "2026-06-10T15:00:00.000", url: /signup/}
+  - label: pw1h-minus
+    kind: user
+    os: Windows
+    browser: Microsoft Edge
+    pre_visits: [{at: "2026-06-10T14:00:01.000", url: /pricing/}]
+    signup: {at: "2026-06-10T15:00:00.000", url: /signup/}
+  - label: pw1h-plus
+    kind: user
+    os: Windows
+    browser: Microsoft Edge
+    pre_visits: [{at: "2026-06-10T13:59:59.000", url: /pricing/}]
+    signup: {at: "2026-06-10T15:00:00.000", url: /signup/}
+  - label: aw30-exact
+    kind: user
+    os: Linux
+    browser: Chrome
+    signup: {at: "2026-07-01T09:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-02T12:00:00.000", event: uploaded_file, props: {file_type: text/plain, file_size_b: 4096}}
+      - {at: "2026-07-31T09:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: personal/pro}}
+  - label: aw30-minus
+    kind: user
+    os: Linux
+    browser: Chrome
+    signup: {at: "2026-07-01T09:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-02T12:00:00.000", event: uploaded_file, props: {file_type: text/plain, file_size_b: 4097}}
+      - {at: "2026-07-31T08:59:59.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: personal/pro}}
+  - label: aw30-plus
+    kind: user
+    os: Linux
+    browser: Chrome
+    signup: {at: "2026-07-01T09:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-02T12:00:00.000", event: uploaded_file, props: {file_type: text/plain, file_size_b: 4098}}
+      - {at: "2026-07-31T09:00:01.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: personal/pro}}
+
+  # --- Out-of-order and interleaved step sequences --------------------------------------------------------
+  - label: ooo-upgrade-first
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-07-05T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-06T10:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: business/standard}}
+      - {at: "2026-07-08T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 77000}}
+  - label: ooo-share-first
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-06-12T08:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-06-12T08:10:00.000", event: shared_file_link, props: {file_type: image/jpeg, file_size_b: 330000}}
+      - {at: "2026-06-12T08:11:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 330000}}
+      - {at: "2026-06-12T08:12:00.000", event: $pageview, url: /files/}
+  - label: ooo-interleaved
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-13T09:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-06-13T09:05:00.000", event: uploaded_file, props: {file_type: application/zip, file_size_b: 5400000}}
+      - {at: "2026-06-13T09:05:30.000", event: $pageview, url: /files/shared/}
+      - {at: "2026-06-13T09:06:00.000", event: shared_file_link, props: {file_type: application/zip, file_size_b: 5400000}}
+
+  - label: strict-late-share-a
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-14T09:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-06-15T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 515000}}
+      - {at: "2026-06-17T10:00:00.000", event: shared_file_link, props: {file_type: application/pdf, file_size_b: 515000}}
+  - label: strict-late-share-b
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-06-16T09:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-06-18T18:00:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 98000}}
+      - {at: "2026-06-20T09:00:00.000", event: shared_file_link, props: {file_type: image/png, file_size_b: 98000}}
+
+  # --- First-ever uploads before the window (warm-up) and around its boundaries -------------------------
+  - label: fe-warmup-2359
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-05-25T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-05-31T23:59:59.999", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 250000}}
+      - {at: "2026-06-15T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 250001}}
+  - label: fe-june-0000
+    kind: user
+    os: Mac OS X
+    browser: Chrome
+    signup: {at: "2026-05-30T10:00:00.000", url: /signup/}
+    actions: [{at: "2026-06-01T00:00:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 81000}}]
+  - label: fe-may-evening
+    kind: user
+    os: Windows
+    browser: Microsoft Edge
+    signup: {at: "2026-05-28T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-05-31T20:00:00.000", event: uploaded_file, props: {file_type: text/plain, file_size_b: 2048}}
+      - {at: "2026-06-20T20:00:00.000", event: uploaded_file, props: {file_type: text/plain, file_size_b: 2049}}
+  - label: fe-july-0000
+    kind: user
+    os: Linux
+    browser: Firefox
+    signup: {at: "2026-06-29T10:00:00.000", url: /signup/}
+    actions: [{at: "2026-07-01T00:00:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 640000}}]
+
+  # --- Distinct login days in July around the threshold, the month end and the UTC shift ----------------
+  - label: dl-eleven
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-15T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-02T12:00:00.000", event: logged_in}
+      - {at: "2026-07-03T12:00:00.000", event: logged_in}
+      - {at: "2026-07-04T12:00:00.000", event: logged_in}
+      - {at: "2026-07-05T12:00:00.000", event: logged_in}
+      - {at: "2026-07-06T12:00:00.000", event: logged_in}
+      - {at: "2026-07-07T12:00:00.000", event: logged_in}
+      - {at: "2026-07-08T12:00:00.000", event: logged_in}
+      - {at: "2026-07-09T12:00:00.000", event: logged_in}
+      - {at: "2026-07-10T12:00:00.000", event: logged_in}
+      - {at: "2026-07-11T12:00:00.000", event: logged_in}
+      - {at: "2026-07-12T12:00:00.000", event: logged_in}
+  - label: dl-ten
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-15T11:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-02T12:00:00.000", event: logged_in}
+      - {at: "2026-07-03T12:00:00.000", event: logged_in}
+      - {at: "2026-07-04T12:00:00.000", event: logged_in}
+      - {at: "2026-07-05T12:00:00.000", event: logged_in}
+      - {at: "2026-07-06T12:00:00.000", event: logged_in}
+      - {at: "2026-07-07T12:00:00.000", event: logged_in}
+      - {at: "2026-07-08T12:00:00.000", event: logged_in}
+      - {at: "2026-07-09T12:00:00.000", event: logged_in}
+      - {at: "2026-07-10T12:00:00.000", event: logged_in}
+      - {at: "2026-07-11T12:00:00.000", event: logged_in}
+  - label: dl-month-end
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-06-16T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-21T12:00:00.000", event: logged_in}
+      - {at: "2026-07-22T12:00:00.000", event: logged_in}
+      - {at: "2026-07-23T12:00:00.000", event: logged_in}
+      - {at: "2026-07-24T12:00:00.000", event: logged_in}
+      - {at: "2026-07-25T12:00:00.000", event: logged_in}
+      - {at: "2026-07-26T12:00:00.000", event: logged_in}
+      - {at: "2026-07-27T12:00:00.000", event: logged_in}
+      - {at: "2026-07-28T12:00:00.000", event: logged_in}
+      - {at: "2026-07-29T12:00:00.000", event: logged_in}
+      - {at: "2026-07-30T12:00:00.000", event: logged_in}
+      - {at: "2026-07-31T23:30:00.000", event: logged_in}
+  - label: dl-june-evening
+    kind: user
+    os: Mac OS X
+    browser: Safari
+    signup: {at: "2026-06-16T11:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-06-30T20:00:00.000", event: logged_in}
+      - {at: "2026-07-01T12:00:00.000", event: logged_in}
+      - {at: "2026-07-02T12:00:00.000", event: logged_in}
+      - {at: "2026-07-03T12:00:00.000", event: logged_in}
+      - {at: "2026-07-04T12:00:00.000", event: logged_in}
+      - {at: "2026-07-05T12:00:00.000", event: logged_in}
+      - {at: "2026-07-06T12:00:00.000", event: logged_in}
+      - {at: "2026-07-07T12:00:00.000", event: logged_in}
+      - {at: "2026-07-08T12:00:00.000", event: logged_in}
+      - {at: "2026-07-09T12:00:00.000", event: logged_in}
+      - {at: "2026-07-10T12:00:00.000", event: logged_in}
+  - label: rt-0701-midnight
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-20T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-01T00:00:00.000", event: logged_in}
+      - {at: "2026-07-03T09:00:00.000", event: logged_in}
+
+  # --- Fault coverage: each fault touches the first and last day of its window ---------------------------
+  - label: f1-android-uploader
+    kind: user
+    os: Android
+    browser: Chrome
+    signup: {at: "2026-07-01T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-14T10:00:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 900100}}
+      - {at: "2026-07-15T10:00:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 900101}}
+      - {at: "2026-07-16T10:00:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 900102}}
+      - {at: "2026-07-17T10:00:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 900103}}
+      - {at: "2026-07-18T10:00:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 900104}}
+  - label: f2-firefox-sharer
+    kind: user
+    os: Windows
+    browser: Firefox
+    signup: {at: "2026-08-01T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-08-03T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 700000}}
+      - {at: "2026-08-03T10:00:20.000", event: shared_file_link, props: {file_type: application/pdf, file_size_b: 700000}}
+      - {at: "2026-08-09T15:00:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 330330}}
+      - {at: "2026-08-09T15:00:20.000", event: shared_file_link, props: {file_type: image/png, file_size_b: 330330}}
+  - {label: f3-mobile-0622, kind: user, os: Android, browser: Chrome, signup: {at: "2026-06-22T13:00:00.000", url: /signup/mobile/},
+     actions: [{at: "2026-06-22T13:30:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 1100000}}]}
+  - {label: f3-mobile-0623, kind: user, os: iOS, browser: Mobile Safari, signup: {at: "2026-06-23T13:00:00.000", url: /signup/mobile/},
+     actions: [{at: "2026-06-23T13:30:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 1100001}}]}
+  - {label: f3-mobile-0624, kind: user, os: Android, browser: Chrome, signup: {at: "2026-06-24T13:00:00.000", url: /signup/mobile/},
+     actions: [{at: "2026-06-24T13:30:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 1100002}}]}
+  - {label: f3-mobile-0625, kind: user, os: iOS, browser: Mobile Safari, signup: {at: "2026-06-25T13:00:00.000", url: /signup/mobile/},
+     actions: [{at: "2026-06-25T13:30:00.000", event: uploaded_file, props: {file_type: video/mp4, file_size_b: 41100003}}]}
+  - {label: f3-mobile-0626, kind: user, os: Android, browser: Chrome, signup: {at: "2026-06-26T13:00:00.000", url: /signup/mobile/},
+     actions: [{at: "2026-06-26T13:30:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 1100004}}]}
+  - {label: f3-mobile-0627, kind: user, os: iOS, browser: Mobile Safari, signup: {at: "2026-06-27T13:00:00.000", url: /signup/mobile/},
+     actions: [{at: "2026-06-27T13:30:00.000", event: uploaded_file, props: {file_type: image/jpeg, file_size_b: 1100005}}]}
+  - {label: f3-mobile-0628, kind: user, os: Android, browser: Chrome, signup: {at: "2026-06-28T13:00:00.000", url: /signup/mobile/},
+     actions: [{at: "2026-06-28T13:30:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 1100006}}]}
+  - {label: f5-pro-0812, kind: user, os: Windows, browser: Chrome, signup: {at: "2026-08-05T10:00:00.000", url: /signup/},
+     actions: [{at: "2026-08-12T10:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: personal/pro}}]}
+  - {label: f5-pro-0814, kind: user, os: Mac OS X, browser: Safari, signup: {at: "2026-08-06T10:00:00.000", url: /signup/},
+     actions: [{at: "2026-08-14T15:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: personal/pro}}]}
+  - {label: f5-pro-0817, kind: user, os: Windows, browser: Microsoft Edge, signup: {at: "2026-08-10T10:00:00.000", url: /signup/},
+     actions: [{at: "2026-08-17T10:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: personal/pro}}]}
+  - {label: f5-pro-0831, kind: user, os: Linux, browser: Chrome, signup: {at: "2026-08-20T10:00:00.000", url: /signup/},
+     actions: [{at: "2026-08-31T10:00:00.000", event: upgraded_plan, props: {previous_plan: personal/free, new_plan: personal/pro}}]}
+  - label: int-f4-cover
+    kind: internal
+    os: Mac OS X
+    browser: Chrome
+    start: "2026-05-18T08:30:00.000"
+    actions:
+      - {at: "2026-07-27T10:00:00.000", event: logged_in}
+      - {at: "2026-07-27T10:00:30.000", event: $pageview, url: /files/}
+      - {at: "2026-07-29T10:00:00.000", event: logged_in}
+      - {at: "2026-07-29T10:00:30.000", event: $pageview, url: /files/}
+
+  # --- Oracle-sensitivity targets (K1-C5) ------------------------------------------------------------
+  - label: plain-uploader
+    kind: user
+    os: Windows
+    browser: Chrome
+    signup: {at: "2026-06-18T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-07-06T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 333001}}
+      - {at: "2026-07-13T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 333002}}
+      - {at: "2026-07-20T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 333003}}
+      - {at: "2026-07-27T10:00:00.000", event: uploaded_file, props: {file_type: application/pdf, file_size_b: 333004}}
+  - label: power-june
+    kind: user
+    os: Mac OS X
+    browser: Chrome
+    signup: {at: "2026-06-08T10:00:00.000", url: /signup/}
+    actions:
+      - {at: "2026-06-08T10:30:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 210000}}
+      - {at: "2026-06-09T10:00:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 210001}}
+      - {at: "2026-06-10T10:00:00.000", event: uploaded_file, props: {file_type: image/png, file_size_b: 210002}}
+  - label: int-m3-target
+    kind: internal
+    os: Windows
+    browser: Chrome
+    start: "2026-05-18T08:45:00.000"
+    actions:
+      - {at: "2026-07-07T09:00:00.000", event: logged_in}
+      - {at: "2026-07-07T09:01:00.000", event: uploaded_file, props: {file_type: application/zip, file_size_b: 52000000}}
+      - {at: "2026-07-08T09:00:00.000", event: logged_in}
+      - {at: "2026-07-08T09:01:00.000", event: uploaded_file, props: {file_type: application/zip, file_size_b: 52000001}}
+
+sensitivity:
+  - {id: M1, kind: drop_in_range_uploaded_file, label: plain-uploader, event: uploaded_file, at: "2026-07-20T10:00:00.000"}
+  - {id: M2, kind: move_boundary_event_across_local_midnight, label: ms-0714-2359, event: signed_up, delta_ms: 1}
+  - {id: M3, kind: change_internal_user_email_domain, label: int-m3-target, event: $identify, new_email: int-m3-target@example.com}
+  - {id: M4, kind: duplicate_signed_up, label: signup-0714-noon, event: signed_up}
+  - {id: M5, kind: remove_identify, label: power-june, event: $identify}
