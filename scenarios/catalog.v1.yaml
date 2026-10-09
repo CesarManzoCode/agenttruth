@@ -1,0 +1,779 @@
+# AgentTruth scenario catalog v1 (contract §7). A superset of PostHog's tasks.yaml v2 task
+# (id, category, intent, expected_tools, acceptable_tools, success_criteria keep PostHog's meaning);
+# AgentTruth fields live under `agenttruth:`. Exact-answer and planted-cause prompts are final text,
+# frozen by this file's hash. Round-trip-agent prompts are drafts until K4.
+schema: agenttruth.catalog/v1
+version: 1
+dataset: ds1
+scenarios:
+
+  # ================================================================================================
+  # Exact answer (16)
+  # ================================================================================================
+
+  - id: ea-uploads-july-filtered
+    category: product-analytics
+    intent: "How many files were uploaded in July 2026, excluding internal and test users?"
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports the number of uploaded_file events from 2026-07-01 to 2026-07-31 in project time with test accounts filtered."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: count
+      metric: {type: trends, event: uploaded_file, math: total, date_from: 2026-07-01, date_to: 2026-07-31, filter_test_accounts: true}
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC, SIG_TEST_ACCOUNTS, SIG_AGG_UNIQUE, SIG_EVENT_downloaded_file]
+      semantics: [SEM-01, SEM-03, SEM-05]
+      fault_overlaps: [F1]
+      posthog_query: auto
+
+  - id: ea-signups-day-0714
+    category: product-analytics
+    intent: "How many sign-ups were there on July 14, 2026?"
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports the number of signed_up events on 2026-07-14, from 00:00:00 to 23:59:59.999 project time."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: count
+      metric: {type: trends, event: signed_up, math: total, date_from: 2026-07-14, date_to: 2026-07-14, filter_test_accounts: false}
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_NEXT, SIG_PERIOD_EXTRA_DAY, SIG_TZ_UTC]
+      semantics: [SEM-01, SEM-02, SEM-03]
+      fault_overlaps: []
+      posthog_query: auto
+
+  - id: ea-active-week-0706
+    category: product-analytics
+    intent: "How many unique users logged in during the week from Monday, July 6, 2026 to Sunday, July 12, 2026, excluding internal and test users?"
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports the number of distinct persons with a logged_in event from 2026-07-06 to 2026-07-12 in project time, test accounts filtered, counted once over the whole week."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: count
+      metric: {type: trends, event: logged_in, math: dau, date_from: 2026-07-06, date_to: 2026-07-12, filter_test_accounts: true}
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC, SIG_TEST_ACCOUNTS, SIG_AGG_TOTAL]
+      semantics: [SEM-01, SEM-02, SEM-03, SEM-04, SEM-05]
+      fault_overlaps: []
+      posthog_query: auto
+
+  - id: ea-revenue-august
+    category: product-analytics
+    intent: "What was the total amount billed in August 2026, in US dollars?"
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports the sum of amount_usd over paid_bill events from 2026-08-01 to 2026-08-31 in project time."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: amount
+      metric: {type: trends, event: paid_bill, math: sum, math_property: amount_usd, date_from: 2026-08-01, date_to: 2026-08-31, filter_test_accounts: false}
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC]
+      semantics: [SEM-01, SEM-14]
+      fault_overlaps: []
+      posthog_query: auto
+
+  - id: ea-uploads-by-os-july
+    category: product-analytics
+    intent: "How many files were uploaded in July 2026 on each operating system, including internal and test users? Give a count per operating system, using the values exactly as recorded."
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports, for every $os value, the number of uploaded_file events from 2026-07-01 to 2026-07-31 in project time, without the test-account filter."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: mapping
+      metric: {type: trends, event: uploaded_file, math: total, breakdown: $os, date_from: 2026-07-01, date_to: 2026-07-31, filter_test_accounts: false}
+      signatures: [SIG_PERIOD_PREV, SIG_TZ_UTC, SIG_TEST_ACCOUNTS, SIG_AGG_UNIQUE, SIG_EVENT_downloaded_file]
+      semantics: [SEM-01, SEM-03, SEM-12]
+      fault_overlaps: [F1]
+      posthog_query: auto
+
+  - id: ea-funnel-signup-upload-june
+    category: product-analytics
+    intent: "Looking only at activity from June 1 to June 30, 2026: how many people signed up, and how many of them uploaded a file within 14 days after signing up? Report the number who signed up as entered and the number who then uploaded as converted."
+    expected_tools: [query-funnel]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports entered and converted of an ordered funnel signed_up -> uploaded_file with a 14-day conversion window, both steps inside 2026-06-01..2026-06-30 project time."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: mapping
+      metric:
+        type: funnel
+        steps: [{event: signed_up}, {event: uploaded_file}]
+        window: {n: 14, unit: day}
+        order: ordered
+        date_from: 2026-06-01
+        date_to: 2026-06-30
+        filter_test_accounts: false
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC, SIG_FUNNEL_ORDER, SIG_EVENT_downloaded_file]
+      semantics: [SEM-01, SEM-04, SEM-06, SEM-07, SEM-08, SEM-09]
+      fault_overlaps: [F3]
+      posthog_query: auto
+
+  - id: ea-funnel-signup-upload-1d
+    category: product-analytics
+    intent: "Looking only at activity from June 1 to June 30, 2026: how many people signed up, and how many of them uploaded a file within 1 day after signing up? Report the number who signed up as entered and the number who then uploaded as converted."
+    expected_tools: [query-funnel]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports entered and converted of an ordered funnel signed_up -> uploaded_file with a 1-day conversion window, both steps inside 2026-06-01..2026-06-30 project time."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: mapping
+      metric:
+        type: funnel
+        steps: [{event: signed_up}, {event: uploaded_file}]
+        window: {n: 1, unit: day}
+        order: ordered
+        date_from: 2026-06-01
+        date_to: 2026-06-30
+        filter_test_accounts: false
+      signatures: [SIG_FUNNEL_WINDOW_DEFAULT, SIG_PERIOD_PREV, SIG_TZ_UTC, SIG_FUNNEL_ORDER, SIG_EVENT_downloaded_file]
+      semantics: [SEM-01, SEM-04, SEM-06, SEM-07, SEM-08, SEM-09]
+      fault_overlaps: [F3]
+      posthog_query: auto
+
+  - id: ea-funnel-activation-july
+    category: product-analytics
+    intent: "Looking only at activity from July 1 to July 31, 2026: how many people signed up, how many of them then uploaded a file, and how many of those then upgraded their plan, with every step within 30 days of signing up? Report entered, step_2 and converted."
+    expected_tools: [query-funnel]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports entered, step_2 and converted of an ordered funnel signed_up -> uploaded_file -> upgraded_plan with a 30-day conversion window, all steps inside 2026-07-01..2026-07-31 project time."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: mapping
+      metric:
+        type: funnel
+        steps: [{event: signed_up}, {event: uploaded_file}, {event: upgraded_plan}]
+        window: {n: 30, unit: day}
+        order: ordered
+        date_from: 2026-07-01
+        date_to: 2026-07-31
+        filter_test_accounts: false
+      signatures: [SIG_FUNNEL_WINDOW_DEFAULT, SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC, SIG_FUNNEL_ORDER]
+      semantics: [SEM-01, SEM-04, SEM-06, SEM-07, SEM-08, SEM-09]
+      fault_overlaps: [F1]
+      posthog_query: auto
+
+  - id: ea-funnel-pricing-signup-1h
+    category: product-analytics
+    intent: "Looking only at activity from June 1 to June 30, 2026, excluding internal and test users: how many people viewed a page whose URL contains /pricing/, and how many of them signed up within 1 hour after that page view? Report entered and converted."
+    expected_tools: [query-funnel]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports entered and converted of an ordered funnel $pageview with $current_url containing /pricing/ -> signed_up with a 1-hour conversion window, both steps inside 2026-06-01..2026-06-30 project time, test accounts filtered."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: mapping
+      metric:
+        type: funnel
+        steps:
+          - {event: $pageview, properties: [{key: $current_url, type: event, operator: icontains, value: /pricing/}]}
+          - {event: signed_up}
+        window: {n: 1, unit: hour}
+        order: ordered
+        date_from: 2026-06-01
+        date_to: 2026-06-30
+        filter_test_accounts: true
+      signatures: [SIG_FILTER_DROPPED, SIG_FUNNEL_WINDOW_DEFAULT, SIG_TEST_ACCOUNTS, SIG_TZ_UTC, SIG_PERIOD_PREV]
+      semantics: [SEM-01, SEM-04, SEM-05, SEM-06, SEM-07, SEM-08, SEM-09]
+      fault_overlaps: []
+      posthog_query: auto
+
+  - id: ea-funnel-strict-upload-share
+    category: product-analytics
+    intent: "Looking only at activity from June 1 to June 30, 2026, excluding internal and test users: how many people uploaded a file, and how many of them shared a file link as their very next action after an upload, within 1 day of that upload? Report entered and converted."
+    expected_tools: [query-funnel]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports entered and converted of a strict-order funnel uploaded_file -> shared_file_link with a 1-day conversion window, both steps inside 2026-06-01..2026-06-30 project time, test accounts filtered."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: mapping
+      metric:
+        type: funnel
+        steps: [{event: uploaded_file}, {event: shared_file_link}]
+        window: {n: 1, unit: day}
+        order: strict
+        date_from: 2026-06-01
+        date_to: 2026-06-30
+        filter_test_accounts: true
+      signatures: [SIG_FUNNEL_ORDER, SIG_FUNNEL_WINDOW_DEFAULT, SIG_TEST_ACCOUNTS, SIG_PERIOD_PREV, SIG_TZ_UTC]
+      semantics: [SEM-01, SEM-04, SEM-05, SEM-06, SEM-07, SEM-08, SEM-09]
+      fault_overlaps: []
+      posthog_query: auto
+
+  - id: ea-retention-firsttime-w1
+    category: product-analytics
+    intent: "Of the people who signed up during the week from Monday, June 8 to Sunday, June 14, 2026, how many uploaded a file during the following week, from Monday, June 15 to Sunday, June 21, 2026? Report the number who signed up as cohort_size and the number who uploaded as retained."
+    expected_tools: [query-retention]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports cohort size and week-1 retained count of weekly first-time retention signed_up -> uploaded_file for the cohort week starting Monday 2026-06-08, project time."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: mapping
+      metric:
+        type: retention
+        start_event: signed_up
+        return_event: uploaded_file
+        period: Week
+        retention_type: retention_first_time
+        cumulative: false
+        total_intervals: 8
+        date_from: 2026-06-08
+        date_to: 2026-06-14
+        cohort_index: 0
+        period_index: 1
+        filter_test_accounts: false
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_NEXT, SIG_TZ_UTC, SIG_RETENTION_CUMULATIVE, SIG_EVENT_downloaded_file]
+      semantics: [SEM-01, SEM-02, SEM-04, SEM-10, SEM-11]
+      fault_overlaps: []
+      posthog_query: auto
+
+  - id: ea-retention-recurring-d1
+    category: product-analytics
+    intent: "Of the people who logged in on July 1, 2026, how many also logged in on July 2, 2026, excluding internal and test users? Report the number who logged in on July 1 as cohort_size and the number who also logged in on July 2 as retained."
+    expected_tools: [query-retention]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Reports cohort size and day-1 retained count of daily recurring retention logged_in -> logged_in for the cohort day 2026-07-01, project time, test accounts filtered."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: mapping
+      metric:
+        type: retention
+        start_event: logged_in
+        return_event: logged_in
+        period: Day
+        retention_type: retention_recurring
+        cumulative: false
+        total_intervals: 8
+        date_from: 2026-07-01
+        date_to: 2026-07-01
+        cohort_index: 0
+        period_index: 1
+        filter_test_accounts: true
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_NEXT, SIG_TZ_UTC, SIG_RETENTION_CUMULATIVE, SIG_TEST_ACCOUNTS]
+      semantics: [SEM-01, SEM-02, SEM-04, SEM-05, SEM-10, SEM-11]
+      fault_overlaps: []
+      posthog_query: auto
+
+  - id: ea-sql-power-uploaders
+    category: sql
+    intent: "How many people signed up in June 2026 and uploaded at least 3 files within 7 days after signing up?"
+    expected_tools: [execute-sql]
+    acceptable_tools: [read-data-schema]
+    success_criteria: "Counts persons whose first signed_up event between 2026-06-01 and 2026-06-30 project time is followed by at least 3 uploaded_file events no later than 7 days after it."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: count
+      metric: {type: custom, function: power_uploaders, event: uploaded_file, anchor_event: signed_up, min_count: 3, within_days: 7, date_from: 2026-06-01, date_to: 2026-06-30, filter_test_accounts: false}
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC, SIG_EVENT_downloaded_file]
+      semantics: [SEM-01, SEM-04, SEM-13]
+      fault_overlaps: [F3]
+      posthog_query: >-
+        SELECT count() FROM (
+        SELECT s.person_id AS person_id FROM (
+        SELECT person_id, min(timestamp) AS signup_ts FROM events
+        WHERE event = 'signed_up' AND toDate(timestamp) >= toDate('2026-06-01') AND toDate(timestamp) <= toDate('2026-06-30')
+        GROUP BY person_id) AS s
+        INNER JOIN (SELECT person_id, timestamp FROM events WHERE event = 'uploaded_file') AS u ON u.person_id = s.person_id
+        WHERE u.timestamp >= s.signup_ts AND u.timestamp <= s.signup_ts + INTERVAL 7 DAY
+        GROUP BY s.person_id HAVING count() >= 3)
+
+  - id: ea-sql-top-filetypes-aug
+    category: sql
+    intent: "What were the top 3 file types by number of uploads in August 2026, excluding internal and test users? List them from most to fewest uploads, using the values exactly as recorded."
+    expected_tools: [execute-sql]
+    acceptable_tools: [query-trends, read-data-schema]
+    success_criteria: "Lists the three file_type values with the most uploaded_file events from 2026-08-01 to 2026-08-31 project time, test accounts filtered, in descending order."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: ranking
+      metric: {type: custom, function: top_values, event: uploaded_file, property: file_type, top_n: 3, date_from: 2026-08-01, date_to: 2026-08-31, filter_test_accounts: true}
+      signatures: [SIG_PERIOD_PREV, SIG_EVENT_downloaded_file, SIG_TEST_ACCOUNTS]
+      semantics: [SEM-01, SEM-05, SEM-12, SEM-13]
+      fault_overlaps: []
+      posthog_query: >-
+        SELECT properties.file_type AS file_type, count() AS uploads FROM events
+        WHERE event = 'uploaded_file' AND toDate(timestamp) >= toDate('2026-08-01') AND toDate(timestamp) <= toDate('2026-08-31')
+        AND coalesce(person.properties.email, '') NOT ILIKE '%@hedgebox-internal.example%'
+        GROUP BY file_type ORDER BY uploads DESC LIMIT 3
+
+  - id: ea-sql-distinct-login-days
+    category: sql
+    intent: "How many people logged in on more than 10 different days in July 2026, excluding internal and test users?"
+    expected_tools: [execute-sql]
+    acceptable_tools: [read-data-schema]
+    success_criteria: "Counts persons with logged_in events on more than 10 distinct project-time calendar days between 2026-07-01 and 2026-07-31, test accounts filtered."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: count
+      metric: {type: custom, function: distinct_days_users, event: logged_in, min_days_exclusive: 10, date_from: 2026-07-01, date_to: 2026-07-31, filter_test_accounts: true}
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC, SIG_TEST_ACCOUNTS]
+      semantics: [SEM-01, SEM-04, SEM-05, SEM-13]
+      fault_overlaps: []
+      posthog_query: >-
+        SELECT count() FROM (
+        SELECT person_id FROM events
+        WHERE event = 'logged_in' AND toDate(timestamp) >= toDate('2026-07-01') AND toDate(timestamp) <= toDate('2026-07-31')
+        AND coalesce(person.properties.email, '') NOT ILIKE '%@hedgebox-internal.example%'
+        GROUP BY person_id HAVING count(DISTINCT toDate(timestamp)) > 10)
+
+  - id: ea-sql-first-ever-upload-june
+    category: sql
+    intent: "How many people uploaded their first-ever file in June 2026?"
+    expected_tools: [execute-sql]
+    acceptable_tools: [read-data-schema]
+    success_criteria: "Counts persons whose earliest uploaded_file event in the whole project (including before June) falls between 2026-06-01 and 2026-06-30 project time."
+    agenttruth:
+      kind: exact_answer
+      answer_kind: count
+      metric: {type: custom, function: first_ever_in_range, event: uploaded_file, date_from: 2026-06-01, date_to: 2026-06-30, filter_test_accounts: false}
+      signatures: [SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC, SIG_EVENT_downloaded_file]
+      semantics: [SEM-01, SEM-04, SEM-13, SEM-15]
+      fault_overlaps: []
+      posthog_query: >-
+        SELECT count() FROM (
+        SELECT person_id, min(timestamp) AS first_upload FROM events
+        WHERE event = 'uploaded_file'
+        GROUP BY person_id
+        HAVING toDate(first_upload) >= toDate('2026-06-01') AND toDate(first_upload) <= toDate('2026-06-30'))
+
+  # ================================================================================================
+  # Planted cause (5): each prompt states only the symptom and the date range to look at
+  # ================================================================================================
+
+  - id: pc-f1-upload-dip
+    category: product-analytics
+    intent: "File uploads dropped for a few days in mid-July 2026. Looking at July 8 to July 24, 2026, what caused the drop? Report the type of cause, the property and value that identify what was affected, and the first and last day it happened."
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Identifies a tracking outage of uploaded_file for $os = Android from 2026-07-15 to 2026-07-17."
+    agenttruth:
+      kind: planted_cause
+      answer_kind: cause
+      fault: F1
+      metric: {type: custom, function: detect_cause, event: uploaded_file, date_from: 2026-07-08, date_to: 2026-07-24}
+      probes:
+        - id: uploads-by-os-daily
+          metric: {type: trends, event: uploaded_file, math: total, breakdown: $os, interval: day, date_from: 2026-07-08, date_to: 2026-07-24, filter_test_accounts: false}
+          posthog_query: auto
+      value_match: {rule: exact}
+      semantics: [SEM-01, SEM-02, SEM-12]
+
+  - id: pc-f2-share-spike
+    category: product-analytics
+    intent: "The number of shared file links spiked in early August 2026 while the number of people sharing stayed about the same. Looking at July 31 to August 16, 2026, what caused it? Report the type of cause, the property and value that identify what was affected, and the first and last day it happened."
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Identifies duplicated shared_file_link events from $browser = Firefox from 2026-08-03 to 2026-08-09."
+    agenttruth:
+      kind: planted_cause
+      answer_kind: cause
+      fault: F2
+      metric: {type: custom, function: detect_cause, event: shared_file_link, date_from: 2026-07-31, date_to: 2026-08-16}
+      probes:
+        - id: shares-by-browser-daily
+          metric: {type: trends, event: shared_file_link, math: total, breakdown: $browser, interval: day, date_from: 2026-07-31, date_to: 2026-08-16, filter_test_accounts: false}
+          posthog_query: auto
+      value_match: {rule: exact}
+      semantics: [SEM-01, SEM-02, SEM-03, SEM-12]
+
+  - id: pc-f3-newuser-spike
+    category: product-analytics
+    intent: "In late June 2026 the number of new users spiked while the share of sign-ups who went on to upload a file dropped. Looking at June 15 to July 5, 2026, what caused it? Report the type of cause, the property and value that identify what was affected, and the first and last day it happened."
+    expected_tools: [query-trends, query-funnel]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Identifies an identity break for sign-ups whose $current_url contains /signup/mobile from 2026-06-22 to 2026-06-28."
+    agenttruth:
+      kind: planted_cause
+      answer_kind: cause
+      fault: F3
+      metric: {type: custom, function: detect_cause, event: signed_up, date_from: 2026-06-15, date_to: 2026-07-05}
+      probes:
+        - id: pageview-persons-daily
+          metric: {type: trends, event: $pageview, math: dau, interval: day, date_from: 2026-06-15, date_to: 2026-07-05, filter_test_accounts: false}
+          posthog_query: auto
+        - id: signup-upload-14d
+          metric:
+            type: funnel
+            steps: [{event: signed_up}, {event: uploaded_file}]
+            window: {n: 14, unit: day}
+            order: ordered
+            date_from: 2026-06-15
+            date_to: 2026-07-05
+            filter_test_accounts: false
+          posthog_query: auto
+      value_match: {rule: contains, substring: /signup/mobile}
+      semantics: [SEM-01, SEM-02, SEM-04, SEM-06, SEM-07, SEM-08, SEM-09]
+
+  - id: pc-f4-pageview-spike
+    category: product-analytics
+    intent: "Pageviews spiked at the end of July 2026. Looking at July 20 to August 2, 2026, what caused it? Report the type of cause, the property and value that identify what was affected, and the first and last day it happened."
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Identifies internal traffic from persons whose email contains hedgebox-internal.example from 2026-07-27 to 2026-07-29."
+    agenttruth:
+      kind: planted_cause
+      answer_kind: cause
+      fault: F4
+      metric: {type: custom, function: detect_cause, event: $pageview, date_from: 2026-07-20, date_to: 2026-08-02}
+      probes:
+        - id: pageviews-daily
+          metric: {type: trends, event: $pageview, math: total, interval: day, date_from: 2026-07-20, date_to: 2026-08-02, filter_test_accounts: false}
+          posthog_query: auto
+      value_match: {rule: contains, substring: hedgebox-internal.example}
+      semantics: [SEM-01, SEM-02, SEM-05]
+
+  - id: pc-f5-pro-upgrades-drop
+    category: product-analytics
+    intent: "Upgrades to the personal/pro plan dropped sharply in the second half of August 2026. Looking at August 10 to August 31, 2026, what caused it? Report the type of cause, the property and value that identify what was affected, and the first and last day it happened."
+    expected_tools: [query-trends]
+    acceptable_tools: [execute-sql, read-data-schema]
+    success_criteria: "Identifies that upgraded_plan.new_plan changed from personal/pro to pro from 2026-08-17 to 2026-08-31."
+    agenttruth:
+      kind: planted_cause
+      answer_kind: cause
+      fault: F5
+      metric: {type: custom, function: detect_cause, event: upgraded_plan, date_from: 2026-08-10, date_to: 2026-08-31}
+      probes:
+        - id: upgrades-by-plan-daily
+          metric: {type: trends, event: upgraded_plan, math: total, breakdown: new_plan, interval: day, date_from: 2026-08-10, date_to: 2026-08-31, filter_test_accounts: false}
+          posthog_query: auto
+      value_match: {rule: exact}
+      semantics: [SEM-01, SEM-02, SEM-12]
+
+  # ================================================================================================
+  # Round trip, scripted (RS): one setting through insight-create (or insight-update), both MCP modes
+  # ================================================================================================
+
+  - id: rs-sql-display
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with display ActionsBar, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has display = ActionsBar."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: display, value: ActionsBar,
+                 schema_default: {schema_class: DataVisualizationNode, schema_field: display}, operation: create}
+  - id: rs-sql-chartsettings-showlegend
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.showLegend true, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.showLegend = true."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.showLegend, value: true,
+                 schema_default: {schema_class: ChartSettings, schema_field: showLegend}, operation: create}
+  - id: rs-sql-chartsettings-legendposition
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.legendPosition bottom, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.legendPosition = bottom."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.legendPosition, value: bottom,
+                 schema_default: {schema_class: ChartSettings, schema_field: legendPosition}, operation: create}
+  - id: rs-sql-chartsettings-showvaluesonseries
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.showValuesOnSeries true, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.showValuesOnSeries = true."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.showValuesOnSeries, value: true,
+                 schema_default: {schema_class: ChartSettings, schema_field: showValuesOnSeries}, operation: create}
+  - id: rs-sql-chartsettings-stackbars100
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.stackBars100 true, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.stackBars100 = true."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.stackBars100, value: true,
+                 schema_default: {schema_class: ChartSettings, schema_field: stackBars100}, operation: create}
+  - id: rs-sql-chartsettings-showannotations
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.showAnnotations true, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.showAnnotations = true."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.showAnnotations, value: true,
+                 schema_default: {schema_class: ChartSettings, schema_field: showAnnotations}, operation: create}
+  - id: rs-sql-chartsettings-showxaxisticks
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.showXAxisTicks false, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.showXAxisTicks = false."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.showXAxisTicks, value: false,
+                 schema_default: {schema_class: ChartSettings, schema_field: showXAxisTicks}, operation: create}
+  - id: rs-sql-chartsettings-showyaxisborder
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.showYAxisBorder false, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.showYAxisBorder = false."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.showYAxisBorder, value: false,
+                 schema_default: {schema_class: ChartSettings, schema_field: showYAxisBorder}, operation: create}
+  - id: rs-sql-chartsettings-yaxisatzero
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.yAxisAtZero false, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.yAxisAtZero = false."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.yAxisAtZero, value: false,
+                 schema_default: {schema_class: ChartSettings, schema_field: yAxisAtZero}, operation: create}
+  - id: rs-sql-chartsettings-chartstyle
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.chartStyle {curve: smooth}, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has chartSettings.chartStyle = {curve: smooth}."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: chartSettings.chartStyle, value: {curve: smooth},
+                 schema_default: {schema_class: ChartSettings, schema_field: chartStyle}, operation: create}
+  - id: rs-sql-tablesettings-pinnedcolumns
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with tableSettings.pinnedColumns [file_type], then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has tableSettings.pinnedColumns = [file_type]."
+    agenttruth: {kind: roundtrip_scripted, insight: sql, path: tableSettings.pinnedColumns, value: [file_type],
+                 schema_default: {schema_class: TableSettings, schema_field: pinnedColumns}, operation: create}
+  - id: rs-sql-tablesettings-conditionalformatting
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with one tableSettings.conditionalFormatting rule, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored DataVisualizationNode has the same single tableSettings.conditionalFormatting rule."
+    agenttruth:
+      kind: roundtrip_scripted
+      insight: sql
+      path: tableSettings.conditionalFormatting
+      value:
+        - {id: at-rule-1, columnName: uploads, templateId: greater_than, input: "100", color: "#FF0000", bytecode: []}
+      schema_default: {schema_class: TableSettings, schema_field: conditionalFormatting}
+      operation: create
+  - id: rs-trends-display
+    category: insights
+    intent: "Scripted round trip: create a trends insight with trendsFilter.display ActionsBar, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored TrendsQuery has trendsFilter.display = ActionsBar."
+    agenttruth: {kind: roundtrip_scripted, insight: trends, path: trendsFilter.display, value: ActionsBar,
+                 schema_default: {schema_class: TrendsFilter, schema_field: display}, operation: create}
+  - id: rs-trends-showvaluesonseries
+    category: insights
+    intent: "Scripted round trip: create a trends insight with trendsFilter.showValuesOnSeries true, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored TrendsQuery has trendsFilter.showValuesOnSeries = true."
+    agenttruth: {kind: roundtrip_scripted, insight: trends, path: trendsFilter.showValuesOnSeries, value: true,
+                 schema_default: {schema_class: TrendsFilter, schema_field: showValuesOnSeries}, operation: create}
+  - id: rs-trends-compare
+    category: insights
+    intent: "Scripted round trip: create a trends insight with compareFilter.compare true, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored TrendsQuery has compareFilter.compare = true."
+    agenttruth: {kind: roundtrip_scripted, insight: trends, path: compareFilter.compare, value: true,
+                 schema_default: {schema_class: CompareFilter, schema_field: compare}, operation: create}
+  - id: rs-trends-breakdown
+    category: insights
+    intent: "Scripted round trip: create a trends insight with breakdownFilter.breakdown $os, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored TrendsQuery has breakdownFilter.breakdown = $os."
+    agenttruth: {kind: roundtrip_scripted, insight: trends, path: breakdownFilter.breakdown, value: $os,
+                 schema_default: {schema_class: BreakdownFilter, schema_field: breakdown}, operation: create}
+  - id: rs-trends-interval
+    category: insights
+    intent: "Scripted round trip: create a trends insight with interval week, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored TrendsQuery has interval = week."
+    agenttruth: {kind: roundtrip_scripted, insight: trends, path: interval, value: week,
+                 schema_default: {schema_class: TrendsQuery, schema_field: interval}, operation: create}
+  - id: rs-funnels-windowinterval
+    category: insights
+    intent: "Scripted round trip: create a funnel insight with funnelsFilter.funnelWindowInterval 7, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored FunnelsQuery has funnelsFilter.funnelWindowInterval = 7."
+    agenttruth: {kind: roundtrip_scripted, insight: funnels, path: funnelsFilter.funnelWindowInterval, value: 7,
+                 schema_default: {schema_class: FunnelsFilter, schema_field: funnelWindowInterval}, operation: create}
+  - id: rs-funnels-ordertype
+    category: insights
+    intent: "Scripted round trip: create a funnel insight with funnelsFilter.funnelOrderType strict, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored FunnelsQuery has funnelsFilter.funnelOrderType = strict."
+    agenttruth: {kind: roundtrip_scripted, insight: funnels, path: funnelsFilter.funnelOrderType, value: strict,
+                 schema_default: {schema_class: FunnelsFilter, schema_field: funnelOrderType}, operation: create}
+  - id: rs-funnels-viztype
+    category: insights
+    intent: "Scripted round trip: create a funnel insight with funnelsFilter.funnelVizType trends, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored FunnelsQuery has funnelsFilter.funnelVizType = trends."
+    agenttruth: {kind: roundtrip_scripted, insight: funnels, path: funnelsFilter.funnelVizType, value: trends,
+                 schema_default: {schema_class: FunnelsFilter, schema_field: funnelVizType}, operation: create}
+  - id: rs-funnels-attribution
+    category: insights
+    intent: "Scripted round trip: create a funnel insight with funnelsFilter.breakdownAttributionType last_touch, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored FunnelsQuery has funnelsFilter.breakdownAttributionType = last_touch."
+    agenttruth: {kind: roundtrip_scripted, insight: funnels, path: funnelsFilter.breakdownAttributionType, value: last_touch,
+                 schema_default: {schema_class: FunnelsFilter, schema_field: breakdownAttributionType}, operation: create}
+  - id: rs-retention-period
+    category: insights
+    intent: "Scripted round trip: create a retention insight with retentionFilter.period Week, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored RetentionQuery has retentionFilter.period = Week."
+    agenttruth: {kind: roundtrip_scripted, insight: retention, path: retentionFilter.period, value: Week,
+                 schema_default: {schema_class: RetentionFilter, schema_field: period}, operation: create}
+  - id: rs-retention-totalintervals
+    category: insights
+    intent: "Scripted round trip: create a retention insight with retentionFilter.totalIntervals 10, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored RetentionQuery has retentionFilter.totalIntervals = 10."
+    agenttruth: {kind: roundtrip_scripted, insight: retention, path: retentionFilter.totalIntervals, value: 10,
+                 schema_default: {schema_class: RetentionFilter, schema_field: totalIntervals}, operation: create}
+  - id: rs-retention-type
+    category: insights
+    intent: "Scripted round trip: create a retention insight with retentionFilter.retentionType retention_first_time, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored RetentionQuery has retentionFilter.retentionType = retention_first_time."
+    agenttruth: {kind: roundtrip_scripted, insight: retention, path: retentionFilter.retentionType, value: retention_first_time,
+                 schema_default: {schema_class: RetentionFilter, schema_field: retentionType}, operation: create}
+  - id: rs-retention-cumulative
+    category: insights
+    intent: "Scripted round trip: create a retention insight with retentionFilter.cumulative true, then read it back."
+    expected_tools: [insight-create]
+    acceptable_tools: [insight-get]
+    success_criteria: "The stored RetentionQuery has retentionFilter.cumulative = true."
+    agenttruth: {kind: roundtrip_scripted, insight: retention, path: retentionFilter.cumulative, value: true,
+                 schema_default: {schema_class: RetentionFilter, schema_field: cumulative}, operation: create}
+  - id: rs-sql-update-legend-full-query
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.legendPosition bottom and chartSettings.showValuesOnSeries true, then update legendPosition to top by sending the full query with both settings, and read it back."
+    expected_tools: [insight-create, insight-update]
+    acceptable_tools: [insight-get]
+    success_criteria: "Records which settings the stored insight keeps after the full-query update (legendPosition top requested; showValuesOnSeries sent unchanged)."
+    agenttruth:
+      kind: roundtrip_scripted
+      insight: sql
+      path: chartSettings.legendPosition
+      value: top
+      schema_default: {schema_class: ChartSettings, schema_field: legendPosition}
+      operation: update_full_query
+      initial: {chartSettings.legendPosition: bottom, chartSettings.showValuesOnSeries: true}
+  - id: rs-sql-update-legend-partial
+    category: insights
+    intent: "Scripted round trip: create a SQL insight with chartSettings.legendPosition bottom and chartSettings.showValuesOnSeries true, then update it with the same source and display and chartSettings containing only legendPosition top, and read it back."
+    expected_tools: [insight-create, insight-update]
+    acceptable_tools: [insight-get]
+    success_criteria: "Records which settings the stored insight keeps after the partial update (whether showValuesOnSeries survives)."
+    agenttruth:
+      kind: roundtrip_scripted
+      insight: sql
+      path: chartSettings.legendPosition
+      value: top
+      schema_default: {schema_class: ChartSettings, schema_field: legendPosition}
+      operation: update_partial_chart_settings
+      initial: {chartSettings.legendPosition: bottom, chartSettings.showValuesOnSeries: true}
+
+  # ================================================================================================
+  # Round trip, agent (6): drafts, refined in K4
+  # ================================================================================================
+
+  - id: ra-trends-bar-compare-breakdown
+    category: insights
+    intent: "Create a new trends insight named at-rt-{run_id}-ra-trends-bar-compare-breakdown that counts uploaded_file events from 2026-07-01 to 2026-07-31. Show it as a bar chart, compare it to the previous period, and break it down by operating system ($os). Then report which of these settings were applied: bar chart, compare to previous period, breakdown by operating system."
+    expected_tools: [insight-create]
+    acceptable_tools: [read-data-schema, query-trends, insight-get]
+    success_criteria: "The saved insight is a TrendsQuery with trendsFilter.display ActionsBar, compareFilter.compare true and breakdownFilter.breakdown $os, and the report matches what was saved."
+    agenttruth:
+      kind: roundtrip_agent
+      answer_kind: roundtrip_report
+      draft: true
+      insight: trends
+      operation: create
+      settings:
+        - {label: bar chart, path: trendsFilter.display, value: ActionsBar}
+        - {label: compare to previous period, path: compareFilter.compare, value: true}
+        - {label: breakdown by operating system, path: breakdownFilter.breakdown, value: $os}
+  - id: ra-funnel-7d-strict-trends
+    category: insights
+    intent: "Create a new funnel insight named at-rt-{run_id}-ra-funnel-7d-strict-trends from signed_up to uploaded_file for 2026-06-01 to 2026-06-30, with a 7-day conversion window, strict step order, and shown as a trend over time. Then report which of these settings were applied: 7-day conversion window, strict step order, trend over time."
+    expected_tools: [insight-create]
+    acceptable_tools: [read-data-schema, query-funnel, insight-get]
+    success_criteria: "The saved insight is a FunnelsQuery with funnelsFilter.funnelWindowInterval 7, funnelOrderType strict and funnelVizType trends, and the report matches what was saved."
+    agenttruth:
+      kind: roundtrip_agent
+      answer_kind: roundtrip_report
+      draft: true
+      insight: funnels
+      operation: create
+      settings:
+        - {label: 7-day conversion window, path: funnelsFilter.funnelWindowInterval, value: 7}
+        - {label: strict step order, path: funnelsFilter.funnelOrderType, value: strict}
+        - {label: trend over time, path: funnelsFilter.funnelVizType, value: trends}
+  - id: ra-retention-week-8-firsttime-cumulative
+    category: insights
+    intent: "Create a new retention insight named at-rt-{run_id}-ra-retention-week-8-firsttime-cumulative from signed_up to uploaded_file, with weekly periods, 8 intervals, counting each person's first sign-up only, and cumulative retention. Then report which of these settings were applied: weekly periods, 8 intervals, first time only, cumulative."
+    expected_tools: [insight-create]
+    acceptable_tools: [read-data-schema, query-retention, insight-get]
+    success_criteria: "The saved insight is a RetentionQuery with retentionFilter.period Week, totalIntervals 8, retentionType retention_first_time and cumulative true, and the report matches what was saved."
+    agenttruth:
+      kind: roundtrip_agent
+      answer_kind: roundtrip_report
+      draft: true
+      insight: retention
+      operation: create
+      settings:
+        - {label: weekly periods, path: retentionFilter.period, value: Week}
+        - {label: 8 intervals, path: retentionFilter.totalIntervals, value: 8}
+        - {label: first time only, path: retentionFilter.retentionType, value: retention_first_time}
+        - {label: cumulative, path: retentionFilter.cumulative, value: true}
+  - id: ra-sql-bar-legend-annotations
+    category: insights
+    intent: "Create a new SQL insight named at-rt-{run_id}-ra-sql-bar-legend-annotations that counts uploaded_file events per day in July 2026. Show it as a bar chart with the legend visible and annotations shown. Then report which of these settings were applied: bar chart, legend visible, annotations shown."
+    expected_tools: [insight-create]
+    acceptable_tools: [read-data-schema, execute-sql, insight-get]
+    success_criteria: "The saved insight is a DataVisualizationNode with display ActionsBar, chartSettings.showLegend true and chartSettings.showAnnotations true, and the report matches what was saved."
+    agenttruth:
+      kind: roundtrip_agent
+      answer_kind: roundtrip_report
+      draft: true
+      insight: sql
+      operation: create
+      settings:
+        - {label: bar chart, path: display, value: ActionsBar}
+        - {label: legend visible, path: chartSettings.showLegend, value: true}
+        - {label: annotations shown, path: chartSettings.showAnnotations, value: true}
+  - id: ra-sql-update-legend-only
+    category: insights
+    intent: "Create a new SQL insight named at-rt-{run_id}-ra-sql-update-legend-only that counts uploaded_file events per day in July 2026, with the legend at the bottom and values shown on the series. Then change only the legend position to the top, keeping every other setting. Then report which of these settings are in effect: legend at the top, values shown on the series."
+    expected_tools: [insight-create, insight-update]
+    acceptable_tools: [read-data-schema, execute-sql, insight-get]
+    success_criteria: "After the update the saved insight has chartSettings.legendPosition top and still has chartSettings.showValuesOnSeries true, and the report matches what was saved."
+    agenttruth:
+      kind: roundtrip_agent
+      answer_kind: roundtrip_report
+      draft: true
+      insight: sql
+      operation: update
+      settings:
+        - {label: legend at the top, path: chartSettings.legendPosition, value: top}
+      keep:
+        - {label: values shown on the series, path: chartSettings.showValuesOnSeries, value: true}
+  - id: ra-sql-axis-settings
+    category: insights
+    intent: "Create a new SQL insight named at-rt-{run_id}-ra-sql-axis-settings that counts uploaded_file events per day in July 2026, with the x-axis tick marks hidden and the y-axis not forced to start at zero. Then report which of these settings were applied: x-axis ticks hidden, y-axis not starting at zero."
+    expected_tools: [insight-create]
+    acceptable_tools: [read-data-schema, execute-sql, insight-get]
+    success_criteria: "The saved insight is a DataVisualizationNode with chartSettings.showXAxisTicks false and chartSettings.yAxisAtZero false, and the report matches what was saved."
+    agenttruth:
+      kind: roundtrip_agent
+      answer_kind: roundtrip_report
+      draft: true
+      insight: sql
+      operation: create
+      settings:
+        - {label: x-axis ticks hidden, path: chartSettings.showXAxisTicks, value: false}
+        - {label: y-axis not starting at zero, path: chartSettings.yAxisAtZero, value: false}

@@ -1,0 +1,15 @@
+{
+  "name": "agenttruth-posthog-export-validator",
+  "private": true,
+  "description": "Validates AgentTruth's PostHog tasks.yaml v2 export against the vendored services/mcp/evals/benchmark/schema.ts (versions pinned per contract §16).",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "dependencies": {
+    "tsx": "4.20.5",
+    "yaml": "2.9.0",
+    "zod": "4.3.6"
+  }
+}
