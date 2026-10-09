@@ -460,7 +460,8 @@ def c4(ctx: Ctx, sabotage: str | None) -> Outcome:
                     problems.append(f"{fid}: probe {probe} does not change")
                     continue
                 if isinstance(value, dict) and isinstance(after, dict):
-                    keys = sorted(k for k in value if value[k] != after.get(k))
+                    # A breakdown value absent from a result has a count of zero.
+                    keys = sorted(k for k in set(value) | set(after) if value.get(k, 0) != after.get(k, 0))
                     dated = [date.fromisoformat(k[:10]) for k in keys if re.match(r"^\d{4}-\d{2}-\d{2}", k)]
                     if any(not window[0] <= d <= window[1] for d in dated):
                         problems.append(f"{fid}: probe {probe} changes outside the window")

@@ -20,7 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agenttruth.evidence.canonical import canonical_file_bytes, sha256_bytes
+from agenttruth.evidence.canonical import canonical_dumps, canonical_file_bytes, sha256_bytes
 from agenttruth.evidence.models import GateReport
 from agenttruth.evidence.read import artifact_relpath
 
@@ -187,6 +187,8 @@ def run_gate(
         print(f"[{gate}] {criterion.id} …", file=sys.stderr, flush=True)
         outcome = _safe(criterion, ctx, None)
         print(f"[{gate}] {criterion.id}: {'pass' if outcome.passed else 'FAIL'}", file=sys.stderr, flush=True)
+        if not outcome.passed:
+            print(f"[{gate}]   observed: {canonical_dumps(outcome.observed)[:2000]}", file=sys.stderr, flush=True)
         results.append(
             {
                 "id": criterion.id,
