@@ -1,0 +1,264 @@
+sprint: K1
+contract_version: 1.0.1
+status: done
+git:
+  start_sha: 9138f1599872aef11cb3a6645b96c558f7127d62
+  end_sha: c40702b07f980430bd34a7d533f6d0d5d0541856
+  dirty: false
+  note: >-
+    end_sha is the commit the gate judged (gate-K1.json git_sha). The commit that adds this report and
+    evidence/K1/ follows it and changes nothing else. All commits are on branch ccr-83d1c777-sa4qz2.
+gate:
+  command: make gate-K1
+  report: evidence/K1/gate-K1.json
+  report_sha256: a5e8b7936bb13da34fcd85f30398cfbf05803b495fb2f66002e8cc89bbf33623
+  verdict: pass
+  criteria: {K1-C1: pass, K1-C2: pass, K1-C3: pass, K1-C4: pass, K1-C5: pass, K1-C6: pass, K1-C7: pass, K1-C8: pass}
+  negative_controls: {total: 8, behaved_as_expected: 8}
+  negative_control_outcomes:
+    - {criterion: K1-C1, sabotage: "append a byte to ds1 build B events.jsonl", failing: [K1-C1], result: pass}
+    - {criterion: K1-C2, sabotage: "ea-uploads-july-filtered + 1 in a ledger copy", failing: [K1-C2], result: pass}
+    - {criterion: K1-C3, sabotage: "SIG_TEST_ACCOUNTS added to ea-signups-day-0714 in a catalog copy", failing: [K1-C3], result: pass}
+    - {criterion: K1-C4, sabotage: "F1 date_to 2026-07-17 -> 2026-07-18 in a spec copy", failing: [K1-C4], result: pass}
+    - {criterion: K1-C5, sabotage: "oracle output for mutation M1 patched back to the base truths", failing: [K1-C5], result: pass}
+    - {criterion: K1-C6, sabotage: "ea-signups-day-0714 renamed to the duplicate id ea-uploads-july-filtered in a catalog copy", failing: [K1-C6], result: pass}
+    - {criterion: K1-C7, sabotage: "type error appended to a copy of evidence/canonical.py; ruff, mypy, pytest run on the copy", failing: [K1-C7], result: pass}
+    - {criterion: K1-C8, sabotage: "temporary module oracle/_negative_control.py importing dataset.generate in a source copy", failing: [K1-C8], result: pass}
+  how_controls_are_run: >-
+    Each sabotage is applied to a copy of an input its target criterion reads (built file, ledger, catalog, spec,
+    oracle output, source tree). Every criterion is then evaluated again. Non-target criteria read their unchanged
+    inputs; their dataset builds, oracle runs and toolchain runs are memoized by input digest within the gate run,
+    so they are re-judged on the same observations.
+  runtime: "4 min 39 s locally (Python 3.14.6, uv 0.12.24, Node 24.21.0); about 4.5 min on GitHub's ubuntu-24.04"
+  repeatability: >-
+    Two evidence runs (on 1f745ae and c40702b) produced byte-identical artifacts except the C7 toolchain log,
+    which contains timings. GitHub Actions run 37975945133 on 1f745ae also gave verdict pass, with every
+    control failing exactly its target. GitHub Actions run 37976783046 on c40702b (the judged commit) is green:
+    uv sync --frozen, make check, make gate-K1 and make verify-evidence. Locally, `make gates` on c40702b with
+    this evidence in the tree gave verdict pass and `evidence verify` ok (14 artifacts, 1 manifest).
+deliverables:
+  - id: contract-1.0.1-amendment
+    status: done
+    evidence: [0fdebdc, "docs/adr/0022-k1-contract-corrections.md"]
+    note: >-
+      The owner authorised four corrections after the K1 BLOCKED report (commit 4b95625): RS
+      totalIntervals=10, K1-C4 declared fault overlaps, K1-C3 scope, and Node validator pins. The BLOCKED state
+      was cleared in commit 39ae65e.
+  - id: toolchain
+    status: done
+    evidence: [pyproject.toml, uv.lock, .python-version, Makefile, .github/workflows/ci.yml]
+    note: >-
+      Python 3.14.6, uv 0.12.24, and exact pins for pydantic 2.14.0, pyyaml 6.0.3, jsonschema 4.26.0,
+      pytest 9.1.1, pytest-xdist 3.8.0, hypothesis 6.168.5, ruff 0.16.10 and mypy 2.4.0. The build
+      backend is uv_build 0.12.24, which ships with the pinned uv.
+  - id: packages-evidence-dataset-oracle-scenarios-gates
+    status: done
+    evidence: [47d7707, bd706a3, d456dac, 36c2096, 79d52a1]
+  - id: pydantic-models-and-json-schemas
+    status: done
+    evidence: [schemas/, "make schemas-check (part of make check)"]
+    note: >-
+      Ten schemas: catalog, dataset-lock, dataset-spec, event, gate-report, ledger, lint-report, manifest,
+      rs-defaults and truths. Committed files are validated against them in tests.
+  - id: datasets-ds0-ds1-and-locks
+    status: done
+    evidence:
+      - "datasets/ds0.lock.json sha256 0cbebd37f857b99c2e2a9e447c5930d8a01d30513f3ef63f0bda5e57e208a2f8"
+      - "datasets/ds1.lock.json sha256 a1bbd1a8600c490a61a6ad2d2d8b7b42b8691af847cba43a8f6e0bab7537e480"
+  - id: scenarios-catalog-v1
+    status: done
+    evidence: ["scenarios/catalog.v1.yaml sha256 f2e26062445a7377c2dd07c7b88ea2a56881d8795468bb5bb854f0f8934543d5"]
+    note: >-
+      16 EA and 5 PC scenarios with final prompts. 27 RS cases: the 25 keys of §7.4 plus the two update
+      variants. 6 RA scenarios, draft: true.
+  - id: truths-ds1-v1
+    status: done
+    evidence: ["truths/ds1.v1.json sha256 666717b6d286d59b2943063ef129cca4b2dd01de97d610190c054bbee2ab3354"]
+    note: "Written by `make truths` (agenttruth oracle compute). K1-C2 recomputes it and finds it byte-identical."
+  - id: third-party-posthog
+    status: done
+    evidence:
+      - "third_party/posthog/SOURCE.md (schema.ts, schema.py, schema_enums.py, LICENSE at e606d69; blob ids verified)"
+      - "third_party/posthog/rs_defaults.json sha256 dc5511e783d1cb9592191683018a4d0b0de8365a332f7a975874fcd8c989e7c7"
+      - "third_party/posthog/package-lock.json sha256 ab57b284c55209bb3ab76515fa971f22f82c622f8c3ef91282fe9dfcf10cb52f (zod 4.3.6, yaml 2.9.0, tsx 4.20.5)"
+  - id: posthog-tasks-v2-export-and-validation
+    status: done
+    evidence: ["evidence/K1 artifact bbed1a29308ab82c49cb41a621492140dc0acf48d1a2d831d9bdb13177e16264 (export)", "e637dde704c4ef0cde59fed05a2a52874cf6cc4cb2f16dd8c5838ee754e413cc (validator output: ok, 27 tasks)"]
+  - id: evidence-store-and-redaction
+    status: done
+    evidence: [src/agenttruth/evidence/store.py, src/agenttruth/evidence/redact.py, tests/test_evidence.py]
+    note: >-
+      Content-addressed writes (sha256/<hh>/<hash>.<ext>, gzip with mtime=0), immutability, and redaction of
+      environment secrets and the §12 token patterns. `agenttruth evidence verify` re-hashes stored artifacts and
+      checks manifest references. Unit tests cover canaries, tampering and missing artifacts.
+  - id: gate-checker-K1
+    status: done
+    evidence: ["evidence/K1/gate-K1.json sha256 a5e8b7936bb13da34fcd85f30398cfbf05803b495fb2f66002e8cc89bbf33623"]
+  - id: readme-license-gitignore-env-example
+    status: done
+    evidence: [README.md, LICENSE, .gitignore, .env.example]
+  - id: ci-workflow
+    status: done
+    evidence: [".github/workflows/ci.yml: uv sync --frozen, make check, make gate-K1, make verify-evidence on ubuntu-24.04"]
+spend:
+  anthropic_usd: 0
+  cap_usd: 0
+  posthog_usd: 0
+measurements:
+  datasets:
+    ds0:
+      events: 3881
+      users: 300
+      internal_users: 6
+      visitors: 300
+      planted_journeys: 16
+      distinct_ids: 906
+      window: 2026-05-04..2026-05-10 (warm-up 2026-05-01..05-03)
+      sha256:
+        events.jsonl: 28a649786b258926409f8f5ea8f56d81522df6925b6c216686862f38f9ee55e7
+        ledger.json: e09834099cf220d3fb7744db366c0bd65be0717704cf60c86c618ea194f7f236
+        manifest.json: 6dc8bae99f02918ac37fbe2eb75439652194e5e46ff5718dcd2df4cb30b6a6fd
+    ds1:
+      events: 82392
+      users: 2400
+      internal_users: 40
+      visitors: 3000
+      planted_journeys: 55
+      distinct_ids: 7840
+      window: 2026-06-01..2026-08-31 (warm-up 2026-05-18..05-31)
+      sha256:
+        events.jsonl: a33149eb4e79788b7384ae51b4643406270dd3bf9ca2d8027bd17bb8eb3ad7d6
+        ledger.json: 8e15c7c11381a29bf62a0436bd563c34c3b92ecb18be47c549e09e25366424cd
+        manifest.json: 7b6d770329e3a36d86952441abe107550cda1d3f1e641fd682a8b1857487a50e
+  scenarios: {total: 54, exact_answer: 16, planted_cause: 5, roundtrip_scripted: 27, roundtrip_agent: 6}
+  truths: 21
+  declared_signatures: 73
+  faults_touched_events: {F1: 64, F2: 69, F3: 35, F4: 3683, F5: 31}
+  fault_overlaps_declared_and_observed:
+    F1: [ea-funnel-activation-july, ea-uploads-by-os-july, ea-uploads-july-filtered]
+    F2: []
+    F3: [ea-funnel-signup-upload-1d, ea-funnel-signup-upload-june, ea-sql-power-uploaders]
+    F4: []
+    F5: []
+  sensitivity_mutations:
+    M1: "remove uploaded_file ds1-u00051-0006 -> ea-uploads-july-filtered and ea-uploads-by-os-july[Windows] each -1"
+    M2: "move signed_up ds1-u00005-0001 (2026-07-14 23:59:59.999 local) +1 ms -> ea-signups-day-0714 -1"
+    M3: "internal user int-m3-target's email to @example.com -> ea-active-week-0706 +1, ea-uploads-july-filtered +2"
+    M4: "duplicate signed_up ds1-u00008-0001 -> ea-signups-day-0714 +1"
+    M5: "remove $identify of power-june -> ea-sql-power-uploaders -1; June 14-day and 1-day funnels converted -1 (entered unchanged)"
+  tests: {offline_tests: 57, skipped: 0, socket_guard: active}
+  build_seconds_ds1: 13
+design_said_vs_system_did:
+  - design: "SEM-03: math=dau counts distinct persons."
+    system: >-
+      A range-level 'unique users' value counts each person once over the whole range, not as a sum of daily
+      uniques. ea-active-week-0706 = 351 persons, against 546 logged_in events (its SIG_AGG_TOTAL).
+  - design: "SEM-04: an anonymous id merged by $identify belongs to the identified person; merging two already-identified persons is refused (F-24)."
+    system: >-
+      Identity is resolved statically over the whole file, so a merge covers past and future events. An
+      $identify is ignored when its $anon_distinct_id has already been the identified id of an $identify, or is
+      already merged elsewhere; tests/test_oracle_rules.py covers both cases.
+  - design: "SEM-05: exclude events whose person email at event time contains @hedgebox-internal.example."
+    system: >-
+      The email at event time is the latest $set.email on the person's earlier or same events (case-insensitive
+      match). Events with no known email pass the not_icontains filter. Internal users carry their email from
+      their first event, so the person-properties mode does not change the result.
+  - design: "SEM-06: strict order means no other event of the person between consecutive steps."
+    system: >-
+      'Other event' means any event of the person inside the date range, after the test-account filter,
+      including $identify and server-side paid_bill. Because $identify follows signed_up, the strict
+      sign-up funnels convert 0, which is their SIG_FUNNEL_ORDER value. K2 should check this reading first.
+  - design: "SEM-07: a step at exactly step1 + window counts as converted."
+    system: >-
+      Windows are fixed durations in milliseconds (1 day = 86,400,000 ms; the timezone has no DST). Planted users
+      at the window and window ± 1 s convert, convert and do not convert for the 1-hour, 1-day, 14-day and
+      30-day funnels (ds1 spec labels pw1h-*, fw1d-*, fw14d-*, aw30-*).
+  - design: "SEM-09: a person enters once, on the step-1 event that reaches the furthest step."
+    system: "The furthest step over every step-1 candidate in range is counted. Counts do not depend on tie-breaking."
+  - design: "SEM-10/11: retention first-time cohort is the first start event in range; return in period k; Period 0 = cohort."
+    system: >-
+      Return events are not limited to the cohort date range, only by bucket. 'cumulative' counts a return in
+      any bucket from period_index to total_intervals − 1. Weeks start Monday 00:00 local.
+  - design: "§6.3 SIG_PERIOD_PREV / SIG_PERIOD_NEXT: shift the range by its own length."
+    system: >-
+      Implemented literally: July 2026 shifts to 2026-05-31..06-30, not to calendar June. For June scenarios the
+      previous range reaches the warm-up, so warm-up data counts in those signature values.
+  - design: "§9.2 planted-cause value equal / contains the planted substring."
+    system: >-
+      PC truths record the value observed in events. F3's is the sign-up path '/signup/mobile/' (with trailing
+      slash) and F4's is the domain 'hedgebox-internal.example'. The catalog's value_match records the contract
+      substrings (/signup/mobile, hedgebox-internal.example), and lint checks that each truth contains its
+      substring.
+  - design: "K1-C4 (1.0.1): declared fault overlaps, window and segment confinement."
+    system: >-
+      fault_overlaps were declared before the first fault-disabled build. Observed changes equal the
+      declarations for all five faults. Every disabled-fault diff lies inside its §5.2 window and segment and
+      touches the window's first and last day; the generator also enforces this coverage and fails the build
+      otherwise.
+deviations:
+  - >-
+    Contract amended 1.0.0 -> 1.0.1 (ADR-0022, commit 0fdebdc), with the owner's explicit authorisation, after
+    the first K1 attempt stopped BLOCKED (condition 2: RS totalIntervals=8 equals the schema default). No other
+    normative document was changed.
+  - >-
+    Branch: commits go to ccr-83d1c777-sa4qz2, as this session's git configuration requires, not to main as
+    §14 says. The owner merges into main.
+  - >-
+    Lock hashes: datasets/*.lock.json were created once in this sprint (commit 727ef2d), after the last
+    generator change, with `make locks`. They have not been regenerated since; K1-C1 compares two fresh builds
+    (PYTHONHASHSEED 1 and 2) with them.
+  - >-
+    First gate run failed K1-C4 because of a checker bug, not a data problem. Disabling F5 leaves no 'pro'
+    breakdown, and an absent key was compared with an explicit 0, so the checker reported changes outside the
+    window. GitHub Actions run 37975355608 on 727ef2d failed for the same reason. Commit 1f745ae fixes it
+    (absent count = 0). The committed evidence comes from a later run on c40702b.
+  - "C7 runs pytest with -n 4 (pytest-xdist) inside the copy; all 57 tests run and none is skipped."
+  - >-
+    CI run 37975945133 (commit 1f745ae) passed the gate but failed `make verify-evidence`, which errored when no
+    evidence directory existed yet. Commit c40702b fixes the target, and the committed evidence was regenerated on
+    that commit.
+divergences_opened: []
+limitations_added: ["docs/LIMITATIONS.md#k1-2026-10-09: L-18, L-19, L-20, L-21, L-22"]
+demonstrated:
+  - >-
+    ds0 and ds1 build byte-for-byte: two fresh processes with different PYTHONHASHSEED produce identical
+    events.jsonl, ledger.json and manifest.json, equal to the committed locks. This holds locally and on
+    GitHub's ubuntu-24.04 (K1-C1).
+  - >-
+    For all 21 EA/PC scenarios, the ledger derived from journeys equals the oracle derived from events
+    (K1-C2). Beyond the gate, all 60 metric variants of tests/test_ledger_vs_oracle.py agree on ds0 and on a
+    reduced ds1.
+  - "The 73 declared signatures of the 16 EA scenarios are pairwise distinguishable from each other and from the truth (K1-C3)."
+  - >-
+    Each planted fault F1–F5 is switchable in isolation. Its diff stays inside the §5.2 window and segment, its
+    PC probes change, and exactly the declared EA truths change (K1-C4).
+  - "Five event-file mutations change exactly the scenario truths the construction ledger predicts, by the predicted amount (K1-C5)."
+  - >-
+    The catalog passes lint, including the RS default check against the vendored schema.py. Its export
+    validates against PostHog's vendored schema.ts with zod 4.3.6 (K1-C6).
+  - "ruff, ruff format, mypy --strict and 57 offline tests pass with the socket guard active (K1-C7)."
+  - "The §4.1 import rules hold, by the gate's own AST check and by an independent pytest AST test (K1-C8)."
+  - "Every gate criterion detects its sabotage: 8 of 8 negative controls fail exactly their target criterion."
+not_demonstrated:
+  - >-
+    Anything about PostHog. K1 never contacts it. Whether PostHog's REST API or MCP computes these truths (L1/L2),
+    and whether the semantic readings above match PostHog, is K2's work.
+  - "That the reviewed HogQL strings of the four SQL scenarios run in PostHog or return the oracle's values."
+  - "That the RS/RA settings round-trip through the MCP (K4), or anything about agents (K3+)."
+  - "Redaction against real credentials or transcripts. Only the mechanism and its unit tests exist; `audit secrets` is a later sprint."
+  - "That the planted-cause detectors generalise beyond ds1 (L-20)."
+blocked: null
+next_sprint_inputs:
+  - "Dataset hashes for ingestion checks: ds0 events.jsonl 28a64978…, ds1 events.jsonl a33149eb… (full values above); ds1 counts: 82,392 events, 7,840 distinct ids."
+  - "truths/ds1.v1.json sha256 666717b6d286d59b2943063ef129cca4b2dd01de97d610190c054bbee2ab3354; catalog v1 sha256 f2e26062445a7377c2dd07c7b88ea2a56881d8795468bb5bb854f0f8934543d5."
+  - >-
+    Triangulate these readings first in K2: strict-funnel 'other events' (SEM-06), the conversion-window boundary
+    (SEM-07), first-time retention range and cumulative upper bound (SEM-10), unique persons over a range
+    (SEM-03), and email at event time for the test-account filter (SEM-05).
+  - >-
+    ds0 has no catalog, so its ledger holds journeys only. K2's DEV triangulation needs ds0-dated metrics; the
+    contract does not say where those come from. Check before K2 starts.
+  - >-
+    ra-retention-week-8-firsttime-cumulative asks for 8 intervals, the schema default (L-22). Its id is
+    contract-fixed and its prompt is a draft; K4 should consider this.
+  - "CI: GitHub Actions on ubuntu-24.04 runs uv sync --frozen, make check, make gate-K1 and make verify-evidence (about 5 min)."

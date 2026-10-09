@@ -1,0 +1,19 @@
+$ ruff check --no-cache .
+exit 0
+All checks passed!
+
+$ ruff format --check --no-cache .
+exit 0
+79 files already formatted
+
+$ mypy --strict --cache-dir /tmp/agenttruth-gate-K1-cqlfgffg/029-mypy-cache src
+exit 0
+Success: no issues found in 34 source files
+
+$ pytest -q -p no:cacheprovider -n 4 --junitxml=/tmp/agenttruth-gate-K1-cqlfgffg/030-junit/junit.xml
+exit 0
+bringing up nodes...
+bringing up nodes...
+
+.........................................................                [100%]
+57 passed in 3.53s

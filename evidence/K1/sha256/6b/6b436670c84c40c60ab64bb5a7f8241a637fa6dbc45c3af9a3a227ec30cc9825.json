@@ -1,0 +1,1 @@
+{"by_kind":{"exact_answer":16,"planted_cause":5,"roundtrip_agent":6,"roundtrip_scripted":27},"catalog_sha256":"f2e26062445a7377c2dd07c7b88ea2a56881d8795468bb5bb854f0f8934543d5","issues":[],"ok":true,"scenarios":54,"schema":"agenttruth.lint-report/v1","signatures":73,"truths_sha256":"666717b6d286d59b2943063ef129cca4b2dd01de97d610190c054bbee2ab3354"}
