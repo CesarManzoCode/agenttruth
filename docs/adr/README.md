@@ -25,3 +25,4 @@ Each ADR records one decision, the alternatives rejected and why. ADRs are immut
 | [0019](0019-english.md) | English |
 | [0020](0020-frontend-react-ts-playwright.md) | React + TS + Playwright |
 | [0021](0021-repetition-statistics-budget.md) | Repetition, statistics, budget |
+| [0022](0022-k1-contract-corrections.md) | K1 contract corrections (contract 1.0.1) |

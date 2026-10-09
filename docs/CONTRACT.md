@@ -2,12 +2,12 @@
 
 | | |
 |---|---|
-| Contract version | 1.0.0 (K0) |
+| Contract version | 1.0.1 (K0; K1 corrections, ADR-0022) |
 | Status | Normative. Binding on every sprint K1–K7. |
 | Owner | César Manzo (`CesarManzoCode`) |
 | Implementer | Claude Code, one prompt per sprint (`prompts/K1.md` … `prompts/K7.md`) |
-| Source register | `docs/RESEARCH.md` (IDs `S01a`…`S36`) |
-| Decisions | `docs/adr/` (ADR-0001 … ADR-0021) |
+| Source register | `docs/RESEARCH.md` (IDs `S01a`…`S36`, plus `S01v`) |
+| Decisions | `docs/adr/` (ADR-0001 … ADR-0022) |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119. "The implementer" is Claude Code executing a sprint prompt. "The owner" is César.
 
@@ -85,7 +85,7 @@ Each line is tagged **FACT** (stated by a cited primary source), **INFERENCE** (
 
 - **F-21 FACT** Query date ranges are resolved in the project timezone; for day-or-coarser intervals `date_to` extends to 23:59:59.999999 local; weekly buckets align to the team's `week_start_day`; HogQL DateTime fields are converted to the project timezone. (S01o)
 - **F-22 FACT** Funnel defaults: order `ordered` (sequential), conversion window 14 days, breakdown attribution first touch. All step events must fall inside the query date range, not only step 1. Repeated events in two steps need two occurrences; strict order forbids intervening events. (S01p, S01q, S12)
-- **F-23 FACT** Retention: start event defines cohort; Period 0 is always 100%; "recurring" vs "first time" (first occurrence within range) vs "first ever"; "on" (default) vs cumulative "on or after"; default period Day and 7 total intervals. (S13, S01q, S01r)
+- **F-23 FACT** Retention: start event defines cohort; Period 0 is always 100%; "recurring" vs "first time" (first occurrence within range) vs "first ever"; "on" (default) vs cumulative "on or after"; default period Day; `totalIntervals` defaults to 8 in `posthog/schema.py` at the pin (period 0 plus 7 periods), and the runner's `DEFAULT_TOTAL_INTERVALS = 7` is only a fallback for a null or 0 value. (S13, S01q, S01r; corrected in 1.0.1, ADR-0022)
 - **F-24 FACT** Identify merges the anonymous person into the identified one and earlier events then count under the surviving person; merging two already-identified persons is refused. Person properties are stored on events at event time in the default ("persons on events") mode. (S14, S15)
 - **F-25 FACT** New projects default to timezone UTC and to a test-account filter that excludes an auto-created internal-users cohort. (S01s)
 - **F-26 FACT** Capture: `/batch/` with project token; body < 20 MB; `historical_migration: true` for imports; with `sent_at` the server rewrites `timestamp`, without it uses `timestamp` directly; timestamps > now + 23 h are replaced; historical events are not charged ingestion fees; events cannot be selectively deleted; capture is not request-rate-limited; over-quota capture still returns 200 with `quota_limited`. (S05, S06, S07, S09)
@@ -123,6 +123,7 @@ Each line is tagged **FACT** (stated by a cited primary source), **INFERENCE** (
 | D-19 | English for code, docs, contract | 0019 |
 | D-20 | React 19 + TypeScript 6 + Vite, served by Django; Playwright (TS) e2e on Docker Compose | 0020 |
 | D-21 | Repetition, statistics and budget policy | 0021 |
+| D-22 | K1 contract corrections: RS `totalIntervals=10`, declared fault overlaps for K1-C4, K1-C3 scope, Node validator pins | 0022 |
 
 ---
 
@@ -383,6 +384,7 @@ scenarios:
         filter_test_accounts: true
       signatures: [SIG_PERIOD_PREV, SIG_PERIOD_EXCL_END, SIG_TZ_UTC, SIG_TEST_ACCOUNTS, SIG_AGG_UNIQUE, SIG_EVENT_downloaded_file]
       semantics: [SEM-01, SEM-03, SEM-05]
+      fault_overlaps: [F1]          # planted faults whose disabling changes this truth (K1-C4)
       posthog_query: auto           # compile metric → TrendsQuery JSON for L1/L2; or an explicit HogQL string for type: custom
 ```
 
@@ -420,7 +422,7 @@ Round-trip scripted (RS): every key below, created via `insight-create` and, for
 - SQL (`DataVisualizationNode`): `display=ActionsBar`, `chartSettings.showLegend=true`, `chartSettings.legendPosition=bottom`, `chartSettings.showValuesOnSeries=true`, `chartSettings.stackBars100=true`, `chartSettings.showAnnotations=true`, `chartSettings.showXAxisTicks=false`, `chartSettings.showYAxisBorder=false`, `chartSettings.yAxisAtZero=false`, `chartSettings.chartStyle` (a valid non-default value from `posthog/schema.py`), `tableSettings.pinnedColumns`, `tableSettings.conditionalFormatting` (minimal valid rule).
 - Trends: `trendsFilter.display=ActionsBar`, `trendsFilter.showValuesOnSeries=true`, `compareFilter.compare=true`, `breakdownFilter.breakdown=$os`, `interval=week`.
 - Funnels: `funnelsFilter.funnelWindowInterval=7`, `funnelsFilter.funnelOrderType=strict`, `funnelsFilter.funnelVizType=trends`, `funnelsFilter.breakdownAttributionType=last_touch`.
-- Retention: `retentionFilter.period=Week`, `retentionFilter.totalIntervals=8`, `retentionFilter.retentionType=retention_first_time`, `retentionFilter.cumulative=true`.
+- Retention: `retentionFilter.period=Week`, `retentionFilter.totalIntervals=10`, `retentionFilter.retentionType=retention_first_time`, `retentionFilter.cumulative=true`.
 - Update semantics: create SQL insight with `legendPosition=bottom` and `showValuesOnSeries=true`, then update only `legendPosition=top` (a) sending the full query with both settings, (b) sending a query with the same `source` and `display` whose `chartSettings` contains only `legendPosition: top`; record what survives in each case (F-10 predicts (b) loses `showValuesOnSeries`; whether that is a defect or documented replace-semantics is stated in `findings/108309.md`, not assumed).
 
 Every RS value MUST differ from the schema default for that key (lint against defaults extracted from the vendored `posthog/schema.py` snapshot).
@@ -633,7 +635,7 @@ Common rules for every sprint:
 
 **Interfaces fixed by K1.** CLI: `agenttruth dataset build --spec <ds> --out <dir> [--disable-fault F<n>]`, `agenttruth oracle compute --dataset <dir> --catalog <file> --out <file>`, `agenttruth scenarios lint`, `agenttruth scenarios export --format posthog-tasks-v2 --out <file>`, `agenttruth evidence verify <path>`, `agenttruth gate K<n>`. File formats: `events.jsonl`, `ledger.json`, `manifest.json`, catalog YAML, truths JSON, gate report JSON — all with `schema: agenttruth.<kind>/v1`.
 
-**Allowed dependencies.** Runtime: `pydantic`, `pyyaml`, `jsonschema`. Dev: `pytest`, `pytest-xdist`, `hypothesis`, `ruff`, `mypy`. Node only for validating the PostHog export (`npx tsx` against the vendored `schema.ts` with `zod` pinned to the version in `third_party/posthog/`).
+**Allowed dependencies.** Runtime: `pydantic`, `pyyaml`, `jsonschema`. Dev: `pytest`, `pytest-xdist`, `hypothesis`, `ruff`, `mypy`. Node only for validating the PostHog export (`npx tsx` against the vendored `schema.ts` with `zod` 4.3.6, `yaml` 2.9.0 and `tsx` 4.20.5 pinned exactly in `third_party/posthog/`, §16).
 
 **Gate K1** (`make gate-K1`). The checker forces reconstruction: it deletes every build output and cache it reads, rebuilds in fresh subprocesses, then judges.
 
@@ -641,8 +643,8 @@ Common rules for every sprint:
 |---|---|
 | K1-C1 reproducible | `ds0` and `ds1` built twice in two fresh processes into two empty directories yield identical `events.jsonl`, `ledger.json`, `manifest.json` SHA-256, equal to `datasets/*.lock.json`. |
 | K1-C2 ledger ≡ oracle | For every EA/PC scenario, ledger value == oracle value (exact for counts/mappings/rankings; amounts in integer cents). |
-| K1-C3 signatures distinct | For every EA scenario, truth and declared signature values are pairwise distinguishable under §9.2 tolerance; every scenario declares ≥ 3 signatures. |
-| K1-C4 faults isolated | For each F1–F5: rebuilding with that fault disabled changes the oracle value of the fault's probe metrics inside its declared window and segment, and changes no other EA truth. |
+| K1-C3 signatures distinct | For every EA scenario, truth and declared signature values are pairwise distinguishable under §9.2 tolerance; every EA scenario declares ≥ 3 signatures (PC scenarios declare none; §6.3 defines signatures for EA only). |
+| K1-C4 faults isolated | Every EA scenario declares in the catalog the planted faults its truth overlaps (`agenttruth.fault_overlaps`, possibly empty). For each F1–F5, rebuilding with that fault disabled: changes events only inside the fault's declared window and segment (§5.2), including on the window's first and last day; changes the oracle value of every probe metric of the fault's PC scenario; and changes exactly the EA truths declared as overlapping that fault — every declared truth changes and no other EA truth changes. |
 | K1-C5 oracle sensitivity | Each of these event-file mutations changes exactly the predicted scenario truths by the predicted delta: drop one in-range `uploaded_file`; move one boundary event by 1 ms across local midnight; change one internal user's email domain; duplicate one `signed_up`; remove one `$identify`. |
 | K1-C6 catalog | `scenarios lint` passes (ids unique, kebab-case, categories valid, every SEM/SIG id exists, RS values differ from defaults); export validates against the vendored PostHog `schema.ts`. |
 | K1-C7 quality | `ruff check`, `ruff format --check`, `mypy --strict` on `src/`, `pytest -q` all pass; no network used by offline tests. |
@@ -912,6 +914,7 @@ Pinned exactly. Upgrades are allowed only for security fixes and are recorded in
 | ruff | 0.16.10 | S27 | |
 | mypy | 2.4.0 | S27 | |
 | Node.js | 24.21.0 | S30 | PostHog requires `>=24 <25` |
+| zod / yaml / tsx (npm) | 4.3.6 / 2.9.0 / 4.20.5 | S01v | Node validator of the PostHog export only (§14 K1); PostHog's lockfile resolution for `services/mcp` at the pin; pinned exactly in `third_party/posthog/` |
 | pnpm | 10.34.6 | S28 | PostHog major 10 |
 | TypeScript | 6.0.3 | S28 | PostHog's pin; typescript-eslint 8.71.1 supports `<6.1.0` |
 | React / React DOM | 19.3.0 | S28 | |
@@ -1032,3 +1035,4 @@ next_sprint_inputs:
 ### Changelog
 
 - 1.0.0 (2026-10-08) — K0 contract.
+- 1.0.1 (2026-10-09) — K1 corrections (ADR-0022), approved by the owner after the K1 BLOCKED report: RS value `retentionFilter.totalIntervals` 8 → 10 (8 is the schema default at the pin) and F-23 corrected; K1-C4 reworded to check the fault overlaps declared in the catalog (`agenttruth.fault_overlaps`); K1-C3's three-signature minimum applies to EA scenarios only; §16 pins `zod` 4.3.6, `yaml` 2.9.0 and `tsx` 4.20.5 for the Node validator. No evidence invalidated.
