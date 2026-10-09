@@ -1,0 +1,195 @@
+sprint: K1
+contract_version: 1.0.0
+status: blocked
+git:
+  start_sha: 9138f1599872aef11cb3a6645b96c558f7127d62
+  end_sha: 2d45602c26288751bb19816bb560aba7208074d2
+  dirty: false
+  note: >-
+    end_sha is the last commit before the one that adds this report and evidence/K1/.
+    All commits are on branch ccr-83d1c777-sa4qz2 (see deviations).
+gate:
+  command: make gate-K1
+  report: null
+  report_sha256: null
+  verdict: not_run
+  criteria: {K1-C1: not_run, K1-C2: not_run, K1-C3: not_run, K1-C4: not_run, K1-C5: not_run, K1-C6: not_run, K1-C7: not_run, K1-C8: not_run}
+  negative_controls: {total: 8, behaved_as_expected: 0}
+deliverables:
+  - id: k0-foundation-commit
+    status: done
+    evidence: [9138f1599872aef11cb3a6645b96c558f7127d62]
+    note: >-
+      The commit "docs: K0 foundation contract" already existed at session start, on origin/main and
+      on the session branch, with exactly the K0 files. Nothing in it was modified.
+  - id: third-party-posthog
+    status: partial
+    evidence:
+      - "git blob b2d3a86bd3d18dc8fa433131e29d18a7d5f558e5 third_party/posthog/services/mcp/evals/benchmark/schema.ts"
+      - "git blob 6dd039d82772f0f47c09d92be565a669d18ac5f2 third_party/posthog/posthog/schema.py"
+      - "git blob 9c1ba21f597b984fa8b51c1823afe23696536646 third_party/posthog/posthog/schema_enums.py"
+      - "git blob 847d9d3def03458035447bdae131e1981e2a63da third_party/posthog/LICENSE"
+    note: >-
+      Verbatim copies from PostHog commit e606d69 with provenance in third_party/posthog/SOURCE.md.
+      Not done: the RS defaults table and the Node validator package (stopped at BLOCKED).
+  - {id: toolchain-pyproject-uvlock-makefile, status: not_started, evidence: []}
+  - {id: packages-evidence-dataset-oracle-scenarios-gates, status: not_started, evidence: []}
+  - {id: pydantic-models-and-json-schemas, status: not_started, evidence: []}
+  - {id: scenarios-catalog-v1, status: not_started, evidence: []}
+  - {id: datasets-ds0-ds1-and-locks, status: not_started, evidence: []}
+  - {id: truths-ds1-v1, status: not_started, evidence: []}
+  - {id: posthog-tasks-v2-export-and-validation, status: not_started, evidence: []}
+  - {id: evidence-store-and-redaction, status: not_started, evidence: []}
+  - {id: gate-checker-K1, status: not_started, evidence: []}
+  - {id: readme-license-gitignore-env-example, status: not_started, evidence: []}
+  - {id: ci-workflow, status: not_started, evidence: []}
+spend:
+  anthropic_usd: 0
+  cap_usd: 0
+  posthog_usd: 0
+measurements:
+  rs_keys_checked_against_schema_defaults: 26
+  rs_keys_equal_to_schema_default: 1
+  python_toolchain_resolves: true
+  ci: "no workflow exists yet (deliverable not started), so these commits have no CI run"
+design_said_vs_system_did:
+  - design: >-
+      F-23 (FACT, sources S13, S01q, S01r): retention defaults are period Day and 7 total intervals.
+    system: >-
+      At PostHog e606d69, posthog/schema.py declares RetentionFilter.totalIntervals default 8
+      (line 29705) and AssistantRetentionFilter.totalIntervals default 8, described as "8 (meaning
+      7 periods after initial cohort)" (lines 10651-10656). The runner's DEFAULT_TOTAL_INTERVALS = 7
+      (retention_query_runner.py line 71) is only a fallback for a null or 0 value (lines 385, 387).
+      "7" is the number of periods after period 0; the setting's default value is 8.
+  - design: >-
+      §7.4 lists retentionFilter.totalIntervals=8 as an RS value, and requires every RS value to
+      differ from its default in the vendored posthog/schema.py snapshot.
+    system: >-
+      8 equals the schema default, so the RS lint of K1-C6 must reject the catalog. The other 25 RS
+      values differ from their defaults (evidence/K1/rs-defaults-check.json).
+deviations:
+  - >-
+    Branch: this session is configured to commit and push only to branch ccr-83d1c777-sa4qz2, while
+    contract §14 says sprint commits go on main. The commits are on ccr-83d1c777-sa4qz2; the owner
+    merges them into main.
+  - >-
+    Prompt §2 (first commit): the K0 commit was already present and pushed when the session started,
+    so no new foundation commit was made.
+divergences_opened: []
+limitations_added: []
+demonstrated:
+  - >-
+    The four vendored PostHog files are byte-identical to commit e606d69: their git blob ids equal
+    those listed by `git ls-tree e606d69fc4d9a7920ee4c2cbcd7cac62f915f58a` (third_party/posthog/SOURCE.md).
+  - >-
+    Of the 26 RS values in contract §7.4 (25 keys plus the update value legendPosition=top), 25 differ
+    from their posthog/schema.py defaults and retentionFilter.totalIntervals=8 does not
+    (python3 -I evidence/K1/rs_defaults_check.py third_party/posthog/posthog, exit 1).
+  - >-
+    The contract §16 K1 Python set (pydantic 2.14.0, pyyaml 6.0.3, jsonschema 4.26.0, pytest 9.1.1,
+    pytest-xdist 3.8.0, hypothesis 6.168.5, ruff 0.16.10, mypy 2.4.0) resolves and installs with
+    uv 0.12.24 on CPython 3.14.6, in a scratch project outside the repository
+    (evidence/K1/toolchain-resolution.txt). Condition 7 does not apply.
+not_demonstrated:
+  - "Any K1 gate criterion (C1-C8): no generator, oracle, catalog, truths, evidence store or gate checker exists yet."
+  - "That ds0/ds1 build reproducibly, that ledger and oracle agree, or that faults are injectable and isolated."
+  - "Anything about PostHog's behaviour. K1 never touches PostHog; the findings above are about PostHog's source code at the pin."
+blocked:
+  condition: 2
+  related_conditions: [4]
+  summary: >-
+    K1-C6 cannot pass without changing the contract. §7.4 fixes the RS value
+    retentionFilter.totalIntervals=8 and also requires every RS value to differ from its default
+    in the vendored posthog/schema.py, which K1-C6 checks with `scenarios lint`. At the pinned
+    commit that default is 8. Making the lint pass would mean changing a normative catalog value
+    or relaxing a lint rule, and AGENTS.md forbids both. The value 8 was probably chosen because
+    F-23 says the default is 7 total intervals. At the pin, 7 is only the runner's fallback for a
+    null value; the schema default is 8.
+  attempted:
+    - "Read AGENTS.md, CONTRACT.md §1-§9, §13, §14 (common, K1), §16-§18, and ADR-0001, 0006, 0007, 0008, 0012, 0013, 0017, 0019."
+    - "Sparse-cloned PostHog at e606d69 (git clone --filter=blob:none --sparse) and vendored schema.ts, schema.py, schema_enums.py and LICENSE."
+    - "Extracted the default of every §7.4 RS key from the vendored snapshot by AST parsing, with a stdlib-only script kept as evidence."
+    - "Checked that the §16 Python toolchain resolves (it does) before stopping, so the owner sees every open item at once."
+  command: "python3 -I evidence/K1/rs_defaults_check.py third_party/posthog/posthog"
+  output: >-
+    exit 1; violations: ["retention.retentionFilter.totalIntervals"]; record
+    {"field":"totalIntervals","rs_key":"retention.retentionFilter.totalIntervals","rs_value":8,
+    "schema_class":"RetentionFilter","schema_default":8,"schema_line":29705,"differs_from_default":false}
+  evidence:
+    - "evidence/K1/manifest.json sha256 8e11963c7415e8f68158ccbeb9dcaaadd231c5b5f7a53d07daed0998f991b63a"
+    - "evidence/K1/rs-defaults-check.json sha256 8502959abaa4dd68790ee5638fb346b3f8995e39f0a35437c73199ed65b03075"
+    - "evidence/K1/rs_defaults_check.py sha256 9763f413e86d48fc7bcd6c9871aa0805db77681eb66bc341fb187f84c68512e6"
+    - "evidence/K1/posthog-schema-retention-excerpt.txt sha256 a14c50143f2dec547b387308226f2de615d6c6e0373853cb23458576e5606b84"
+    - "evidence/K1/posthog-retention-runner-excerpt.txt sha256 e81d515a6df06c3a0d99c2e04737e2a764aff7051b8603ee0e9b93ac8a0490bb (PostHog blob ebebbca1292053aaf774e0973c867d60a095e7d8)"
+    - "evidence/K1/toolchain-resolution.txt sha256 bc988bb9bae9dc3f4cc7be361e4944bd6c4dd5e9a4565bbff6c9e1b433695115"
+    - "third_party/posthog/posthog/schema.py git blob 6dd039d82772f0f47c09d92be565a669d18ac5f2 (line 29705)"
+  options:
+    - option: A
+      change: >-
+        ADR amending §7.4 to retentionFilter.totalIntervals=10, and F-23 to read "totalIntervals
+        defaults to 8 in posthog/schema.py (period 0 plus 7 periods); the runner falls back to 7 only
+        for a null or 0 value". 10 is just one choice; any integer other than 8 that PostHog accepts
+        works, and 10 also differs from the fallback 7.
+      consequence: >-
+        No evidence is invalidated (catalog v1 is not written yet). K4 then tests a non-default
+        value, which is what §7.4 intends. The lint rule stays as written.
+    - option: B
+      change: "ADR removing retentionFilter.totalIntervals from the RS list."
+      consequence: "One fewer round-trip field. Retention still covers period, retentionType and cumulative."
+    - option: C
+      change: "ADR making the lint compare totalIntervals against the runner fallback (7) instead of schema.py."
+      consequence: >-
+        Not recommended. It contradicts §7.4's stated default source, and it keeps a value that
+        schema-based paths fill in when the key is missing. Wherever a query is re-validated through
+        PostHog's schema, a stored 8 could not show whether the setting survived.
+  recommendation: >-
+    Option A. Before re-running prompts/K1.md, please also decide the three items under
+    other_open_decisions, so that K1 does not stop again on them.
+  other_open_decisions:
+    - id: K1-C4-literal-reading
+      kind: "condition 2 (would surface at K1-C4); found at design time, not run"
+      summary: >-
+        Read literally, "changes no other EA truth" cannot hold for F1 and F3 with the §7.4 catalog.
+        F1 (uploaded_file from Android not emitted 2026-07-15..17) lies inside ea-uploads-july-filtered
+        (uploaded_file total 2026-07-01..07-31, §7.2) and ea-uploads-by-os-july. Disabling F1 emits
+        those uploads, so both truths must change. F3 (no $identify for /signup/mobile sign-ups
+        2026-06-22..28) splits those users from their later activity. That changes June sign-up
+        metrics (ea-funnel-signup-upload-june, ea-funnel-signup-upload-1d,
+        ea-sql-power-uploaders), and the "conversion drop" it causes is the symptom §5.2 plants.
+      options:
+        - option: A
+          change: >-
+            Let the fault's probe metrics include the EA scenarios that observe it, declared per
+            scenario in the catalog (e.g. agenttruth.observes_faults: [F1]). K1-C4 then checks four
+            things. (i) Every event that differs between the faulted build and the fault-disabled
+            build lies inside the fault's window and segment as declared in §5.2. (ii) Those
+            differing events fall on both the first and last day of the window. (iii) Every PC probe
+            metric and every declared observing EA truth changes. (iv) No undeclared EA truth
+            changes.
+          consequence: >-
+            The criterion stays exact and falsifiable in both directions. The negative control
+            (enlarge a fault window by a day) fails it through (i) and (ii).
+        - option: B
+          change: "Move fault windows or EA ranges so that no EA metric covers any fault."
+          consequence: "Changes contract-fixed scenario ids and meanings (e.g. 'july'), or the faults in §5.2."
+      recommendation: "Option A."
+    - id: K1-C3-every-scenario
+      kind: "clarification"
+      summary: >-
+        K1-C3 says "every scenario declares at least 3 signatures", but §6.3 defines signature
+        transforms only for exact-answer scenarios, and a planted-cause answer is a cause, not a number.
+      recommendation: "Confirm that the minimum of 3 signatures applies to EA scenarios only and that PC scenarios declare none."
+    - id: node-validator-pins
+      kind: "clarification (§16 does not list these)"
+      summary: >-
+        The vendored schema.ts imports both `zod` and `yaml` when the module loads, and the validator
+        runs through tsx. PostHog's pnpm-lock.yaml at e606d69 resolves zod 4.3.6, yaml 2.9.0 and
+        tsx 4.20.5 for services/mcp.
+      recommendation: "Pin exactly zod 4.3.6, yaml 2.9.0 and tsx 4.20.5 in third_party/posthog/ (or add them to §16)."
+next_sprint_inputs:
+  - "Vendored PostHog files are committed and verifiable by git blob id (third_party/posthog/SOURCE.md). A K1 re-run can reuse them."
+  - >-
+    Environment used here: the container had uv 0.11.32, replaced by uv 0.12.24 from its PyPI wheel.
+    It had Node 22.22.0; Node 24.21.0 is available from the npm package node-linux-x64@24.21.0
+    (CI would use actions/setup-node). git clone of github.com/PostHog/posthog works through the
+    session proxy.
