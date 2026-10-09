@@ -1,0 +1,18 @@
+# Python / tooling
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+
+# Build outputs (datasets are rebuilt from specs; gate reruns write here)
+build/
+
+# Node validator dependencies (installed from third_party/posthog/package-lock.json)
+node_modules/
+
+# Local secrets (contract §4.2, PREREQUISITES §5)
+.env.local
+.env
